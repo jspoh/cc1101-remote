@@ -12,6 +12,8 @@
 
 #include "rx.hpp"
 #include <ELECHOUSE_CC1101_SRC_DRV.h>
+#include <algorithm>
+
 
 volatile uint32_t rxFrame[MAX_PULSES];    // populate with pulse timings
 volatile uint32_t lastRssiChangeTime = 0;
@@ -19,6 +21,9 @@ volatile bool rxFrameReady = false;
 // change might not define a frame, but a frame must have changes
 volatile uint32_t numPulsesThisFrame = 0;
 volatile uint32_t numPulsesThisChange =  0;
+volatile uint32_t frameGapTime[MAX_FRAME_GAPS_FOR_CALC];
+volatile uint32_t frameGapTimeSize = 0;
+volatile uint32_t tmpFrameGapTimeSize = 0;
 
 
 void IRAM_ATTR onRssiChange() {
@@ -31,9 +36,16 @@ void IRAM_ATTR onRssiChange() {
   if (delta > FRAME_GAP_US) {
     if (numPulsesThisChange > MIN_PULSES) {
       numPulsesThisFrame = numPulsesThisChange;
+      frameGapTimeSize = tmpFrameGapTimeSize;
       rxFrameReady = true;
     }
     numPulsesThisChange = 0;
+    tmpFrameGapTimeSize = 0;
+
+    if (delta < MAX_FRAME_GAP_US && tmpFrameGapTimeSize + 1 < MAX_FRAME_GAPS_FOR_CALC) {
+      frameGapTime[tmpFrameGapTimeSize++] = delta;
+    }
+
     return;
   }
 
@@ -55,8 +67,15 @@ void IRAM_ATTR onRssiChange() {
   }
 }
 
+uint32_t getMedian(uint32_t arr[], size_t size) {
+    size_t mid = size >> 1;
+    std::nth_element(arr, arr + mid, arr + size);
+    return arr[mid];
+}
 
-void pulseToBinary(const volatile uint32_t* frame, uint32_t sz, std::bitset<MAX_PULSES>* out, bool* out_drop, uint32_t* out_long_us, uint32_t* out_short_us) {
+
+
+void pulseToBinary(const uint32_t* frame, uint32_t sz, std::bitset<MAX_PULSES>* out, bool* out_drop, uint32_t* out_long_us, uint32_t* out_short_us) {
   auto isShort = [](uint32_t t) { return t >= 250 && t <= 550; };
   auto isLong  = [](uint32_t t) { return t >= 850 && t <= 1400; };
 
@@ -137,6 +156,9 @@ void rxLoop(uint32_t dt_ms) {
     const uint32_t n = numPulsesThisFrame;
     static uint32_t rxFrameCopy[MAX_PULSES];
     memcpy(rxFrameCopy, (const void*)rxFrame, n*sizeof(rxFrame[0]));
+    const uint32_t gaps_us_size = frameGapTimeSize;
+    static uint32_t gaps_us[MAX_FRAME_GAPS_FOR_CALC];
+    memcpy(gaps_us, (const void*)frameGapTime, gaps_us_size*sizeof(frameGapTime[0]));
     rxFrameReady = false;
 
     static const bool printRawPulseTimings = true;
@@ -155,7 +177,7 @@ void rxLoop(uint32_t dt_ms) {
     pulseToBinary(rxFrameCopy, n, &pulseBinary, &dropPacket, &long_pulse_us, &short_pulse_us);
 
     if (!dropPacket) {
-      Serial.printf("\n--\nPulse binary(%d) - Read left to right:\nLong pulse (us): %d\nShort pulse (us): %d\n", n, long_pulse_us, short_pulse_us);
+      Serial.printf("\n--\nPulse binary(%d) - Read left to right:\nLong pulse (us): %d\nShort pulse (us): %d\nGap (us): %d\n", n, long_pulse_us, short_pulse_us, getMedian(gaps_us, gaps_us_size));
       for (uint32_t i=0; i<n; ++i) {
         Serial.printf("%d%s", pulseBinary[i] ? 1 : 0, i != 0 && i%4 == 0 ? " " : "");
       }

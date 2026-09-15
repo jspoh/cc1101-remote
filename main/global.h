@@ -23,7 +23,10 @@
 
 // microseconds (us)
 #define MIN_PULSE_US 150
-#define FRAME_GAP_US 50000   // silence after 4000 us is a gap
+#define FRAME_GAP_US 4000   // silence after 4000 us is a gap
+// #define FRAME_GAP_US 50000   // For debugging gaps
+#define MAX_FRAME_GAP_US 50000
+#define MAX_FRAME_GAPS_FOR_CALC 8
 #define MIN_PULSES 10       // ignore frarmes shorter than MIN_PULSES
 #define MAX_PULSES 256       
 

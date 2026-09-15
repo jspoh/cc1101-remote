@@ -19,7 +19,7 @@
 
 static constexpr uint32_t PRINT_NOISE_DUR_MS = 10000;
 
-void pulseToBinary(const volatile uint32_t* frame, uint32_t sz, std::bitset<MAX_PULSES>* out, bool* out_drop, uint32_t* out_long_us, uint32_t* out_short_us);
+void pulseToBinary(const uint32_t* frame, uint32_t sz, std::bitset<MAX_PULSES>* out, bool* out_drop, uint32_t* out_long_us, uint32_t* out_short_us);
 
 void IRAM_ATTR onRssiChange();
 
