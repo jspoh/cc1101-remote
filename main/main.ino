@@ -26,10 +26,11 @@ volatile uint32_t numPulsesThisChange =  0;
 
 void IRAM_ATTR onRssiChange() {
   uint32_t now = micros();
-  uint32_t delta = now - lastRssiChangeTime;
-  lastRssiChangeTime = now;
 
   if (rxFrameReady) return;
+  
+  uint32_t delta = now - lastRssiChangeTime;
+  lastRssiChangeTime = now;
 
   if (delta > FRAME_GAP_US) {
     if (numPulsesThisChange > MIN_PULSES) {
@@ -181,11 +182,17 @@ void loop() {
   */
 
   if (rxFrameReady) {
+    // copy to allow interrupt to keep running
+    const uint32_t n = numPulsesThisFrame;
+    static uint32_t rxFrameCopy[MAX_PULSES];
+    memcpy(rxFrameCopy, (const void*)rxFrame, n*sizeof(rxFrame[0]));
+    rxFrameReady = false;
+
     static const bool printRawPulseTimings = true;
     if (printRawPulseTimings) {
-      Serial.printf("Pulses(%d): ", numPulsesThisFrame);
-      for (uint16_t i=0; i<numPulsesThisFrame; ++i) {
-        Serial.printf("%d%s", rxFrame[i], i+1>=numPulsesThisFrame ? "" : ", ");
+      Serial.printf("Pulses(%d): ", n);
+      for (uint16_t i=0; i<n; ++i) {
+        Serial.printf("%d%s", rxFrameCopy[i], i+1>=n ? "" : ", ");
       }
       Serial.printf(")\n");
     }
@@ -194,16 +201,14 @@ void loop() {
     std::bitset<MAX_PULSES> pulseBinary;
     uint32_t long_pulse_us = 0;
     uint32_t short_pulse_us = 0;
-    pulseToBinary(rxFrame, numPulsesThisFrame, &pulseBinary, &dropPacket, &long_pulse_us, &short_pulse_us);
+    pulseToBinary(rxFrameCopy, n, &pulseBinary, &dropPacket, &long_pulse_us, &short_pulse_us);
 
     if (!dropPacket) {
-      Serial.printf("\n--\nPulse binary(%d) - Read left to right:\nLong pulse (us): %d\nShort pulse (us): %d\n", numPulsesThisFrame, long_pulse_us, short_pulse_us);
-      for (uint32_t i=0; i<numPulsesThisFrame; ++i) {
+      Serial.printf("\n--\nPulse binary(%d) - Read left to right:\nLong pulse (us): %d\nShort pulse (us): %d\n", n, long_pulse_us, short_pulse_us);
+      for (uint32_t i=0; i<n; ++i) {
         Serial.printf("%d%s", pulseBinary[i] ? 1 : 0, i != 0 && i%4 == 0 ? " " : "");
       }
       Serial.printf("\n--\n");
     }
-
-    rxFrameReady = false;
   }
 }
