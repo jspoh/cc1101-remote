@@ -87,6 +87,10 @@ void pulseToBinary(const volatile uint32_t* frame, uint32_t sz, std::bitset<MAX_
   }
 
   // calculate average pulse dur
+  if (num_long == 0 || num_short == 0) {
+    *out_drop = true;
+    return;
+  }
   *out_long_us = sum_long_dur_us / num_long;
   *out_short_us = sum_short_dur_us / num_short;
 
