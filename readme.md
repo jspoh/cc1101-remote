@@ -36,7 +36,7 @@ Most remotes use `OOK` - `On Off Keying` to communicate.
 
 Meaning they generally send pulses in a binary state, using the short (350us) or long (1050us) pulses to communicate.
 
-Eg.
+Eg. (livingroom_fan.pulse > Light On/Off)
 
 ```
 Raw: 
