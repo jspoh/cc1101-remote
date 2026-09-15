@@ -111,6 +111,7 @@ void rxSetup() {
   pinMode(CC1101_GDO0, INPUT);
 
   ELECHOUSE_cc1101.SpiStrobe(CC1101_SIDLE);
+  delay(1);   // let chip finish leaving Tx
   ELECHOUSE_cc1101.SpiStrobe(CC1101_SRX);
 
   ELECHOUSE_cc1101.SetRx();

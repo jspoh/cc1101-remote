@@ -48,6 +48,8 @@ void setup() {
   */
   ELECHOUSE_cc1101.setCrc(0);
 
+  ELECHOUSE_cc1101.setPA(12);   // 12 - max
+
   rxSetup();
 
   Serial.println("CC1101 setup complete");
@@ -56,8 +58,14 @@ void setup() {
 
 void txPulses(const char* pulses, uint32_t long_us, uint32_t short_us, uint32_t gap_us, int repeats) {
   detachInterrupt(digitalPinToInterrupt(CC1101_GDO0));
-  ELECHOUSE_cc1101.SetTx();
+  
   pinMode(CC1101_GDO0, OUTPUT);
+
+  ELECHOUSE_cc1101.SpiStrobe(CC1101_SIDLE);
+  delay(1);   // let chip finish leaving Rx
+  ELECHOUSE_cc1101.SpiStrobe(CC1101_STX);
+
+  ELECHOUSE_cc1101.SetTx();
 
   delay(2);   // let the chip calibrate before the first pulse
   Serial.printf("MARCSTATE: %u\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_MARCSTATE) & 0x1F);
@@ -91,5 +99,7 @@ void loop() {
   if (Serial.read() == '1') {
     Serial.println("Transmitting..");
     txPulses("10010 1011 0010 1011 0101 0101 0011 0011 0011 0010 1100 1101 0011 0011 00", 1100, 375, 10000, 8);
+    // Serial.println("Tx Done");
+    Serial.printf("Tx Done, MARCSTATE: %u\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_MARCSTATE) & 0x1F);
   }
 }
