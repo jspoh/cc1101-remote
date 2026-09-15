@@ -20,7 +20,7 @@ E07-M1101D
 | --- | --- | --- |
 | 1 | GND | |
 | 2 | 3V3 | |
-| 3 | GPIO0 | Optional |
+| 3 | GPIO0 | Not optional for remote copy use case |
 | 4 | GPIO1 | |
 | 5 | GPIO2 | |
 | 6 | GPIO3 | |
