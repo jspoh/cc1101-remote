@@ -1,0 +1,98 @@
+F/R button
+--
+Pulse binary(49) - Read left to right:
+Long pulse (us): 1201
+Short pulse (us): 397
+10101 0101 0101 0011 0101 0010 1010 1011 0011 0010 1101 0100 
+--
+Light on/off
+--
+Pulse binary(49) - Read left to right:
+Long pulse (us): 1203
+Short pulse (us): 395
+10101 0101 0101 0011 0101 0010 1010 1011 0011 0010 1100 1010 
+--
+Fan off
+--
+Pulse binary(49) - Read left to right:
+Long pulse (us): 1200
+Short pulse (us): 398
+10101 0101 0101 0011 0101 0010 1010 1011 0011 0010 1100 1100 
+--
+Fan speed 1
+--
+Pulse binary(49) - Read left to right:
+Long pulse (us): 1201
+Short pulse (us): 396
+10101 0101 0101 0011 0101 0010 1010 1011 0011 0010 1010 1100 
+--
+Fan speed 2
+--
+Pulse binary(49) - Read left to right:
+Long pulse (us): 1199
+Short pulse (us): 398
+10101 0101 0101 0011 0101 0010 1010 1011 0011 0010 1011 0100 
+--
+Fan speed 3
+--
+Pulse binary(49) - Read left to right:
+Long pulse (us): 1198
+Short pulse (us): 400
+10101 0101 0101 0011 0101 0010 1010 1011 0011 0010 1101 0010 
+--
+Fan speed 4
+--
+Pulse binary(49) - Read left to right:
+Long pulse (us): 1199
+Short pulse (us): 398
+10101 0101 0101 0011 0101 0010 1010 1011 0011 0011 0011 0010 
+--
+Fan speed 5
+--
+Pulse binary(49) - Read left to right:
+Long pulse (us): 1195
+Short pulse (us): 403
+10101 0101 0101 0011 0101 0010 1010 1011 0011 0011 0010 1100 
+--
+Fan speed 6
+--
+Pulse binary(49) - Read left to right:
+Long pulse (us): 1201
+Short pulse (us): 396
+10101 0101 0101 0011 0101 0010 1010 1011 0011 0011 0010 1010 
+--
+1H timer
+--
+Pulse binary(49) - Read left to right:
+Long pulse (us): 1204
+Short pulse (us): 394
+10101 0101 0101 0011 0101 0010 1010 1011 0011 0011 0101 0010 
+--
+4H timer
+--
+Pulse binary(49) - Read left to right:
+Long pulse (us): 1199
+Short pulse (us): 399
+10101 0101 0101 0011 0101 0010 1010 1011 0011 0011 0011 0100 
+--
+Cycle light temperature
+--
+Pulse binary(49) - Read left to right:
+Long pulse (us): 1201
+Short pulse (us): 397
+10101 0101 0101 0011 0101 0010 1010 1011 0011 0011 0100 1010 
+--
+Dim light
+--
+Pulse binary(49) - Read left to right:
+Long pulse (us): 1201
+Short pulse (us): 397
+10101 0101 0101 0011 0101 0010 1010 1011 0011 0010 1011 0010 
+--
+Brighten light
+--
+Pulse binary(49) - Read left to right:
+Long pulse (us): 1199
+Short pulse (us): 399
+10101 0101 0101 0011 0101 0010 1010 1011 0011 0010 1010 1010 
+--
