@@ -98,7 +98,7 @@ void loop() {
 
   if (Serial.read() == '1') {
     Serial.println("Transmitting..");
-    txPulses("10010 1011 0010 1011 0101 0101 0011 0011 0011 0010 1100 1101 0011 0011 00", 1100, 375, 10000, 8);
+    txPulses("10010 1011 0010 1011 0101 0101 0011 0011 0011 0010 1100 1101 0011 0011 00", 1100, 375, 6650, 8);
     // Serial.println("Tx Done");
     Serial.printf("Tx Done, MARCSTATE: %u\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_MARCSTATE) & 0x1F);
   }
