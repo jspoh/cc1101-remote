@@ -1,4 +1,5 @@
 #include <ELECHOUSE_CC1101_SRC_DRV.h>
+#include <bitset>
 
 #define CC1101_GDO0 0
 #define CC1101_CSN  1
@@ -46,6 +47,62 @@ void IRAM_ATTR onRssiChange() {
   }
 
   rxFrame[numPulsesThisChange++] = delta;
+
+  if (numPulsesThisChange >= MAX_PULSES) {
+    // Don't call print in IRAM_ATTR interrupt!!
+    // Serial.println("Critical error: Frame will overflow MAX_PULSES value, terminating early to prevent crash");
+      numPulsesThisFrame = numPulsesThisChange;
+      rxFrameReady = true;
+      numPulsesThisChange = 0;
+      return;
+  }
+}
+
+void pulseToBinary(const volatile uint32_t* frame, uint32_t sz, std::bitset<MAX_PULSES>* out, bool* out_drop, uint32_t* out_long_us, uint32_t* out_short_us) {
+  auto isShort = [](uint32_t t) { return t >= 250 && t <= 550; };
+  auto isLong  = [](uint32_t t) { return t >= 850 && t <= 1400; };
+
+  out->reset();
+
+  uint32_t sum_long_dur_us = 0;
+  int num_long = 0;
+  uint32_t sum_short_dur_us = 0;
+  int num_short = 0;
+
+  for (uint32_t i=0; i<sz; ++i) {
+    if (isLong(frame[i])) {
+      out->set(i);
+      sum_long_dur_us += frame[i];
+      ++num_long;
+    }
+    else if (isShort(frame[i])) {
+      sum_short_dur_us += frame[i];
+      ++num_short;
+    }
+    else {
+      // malformed packet
+      *out_drop = true;
+      return;
+    }
+  }
+
+  // calculate average pulse dur
+  *out_long_us = sum_long_dur_us / num_long;
+  *out_short_us = sum_short_dur_us / num_short;
+
+  // verify packet is valid (no long+long or short+short combos)
+  for (uint32_t i=0; i+1<sz; i+=2) {
+    // first and second bit
+    const bool fbit = (*out)[i];
+    const bool sbit = (*out)[i+1];
+    if (fbit == sbit) {
+      *out_drop = true;
+      return;
+    }
+  }
+
+  *out_drop = false;
+  return;
 }
 
 
@@ -104,8 +161,8 @@ void setup() {
 volatile uint32_t elapsed_ms = 0;
 
 void loop() {
-  static uint32_t prev = millis();
-  uint32_t now = millis();
+  static uint32_t prev = (unsigned)millis();
+  uint32_t now = (unsigned)millis();
   uint32_t dt = now - prev;
   prev = now;
   elapsed_ms += dt;
@@ -120,12 +177,29 @@ void loop() {
   */
 
   if (rxFrameReady) {
-    rxFrameReady = false;
-
-    Serial.printf("Pulses(%d): ", numPulsesThisFrame);
-    for (uint16_t i=0; i<numPulsesThisFrame; ++i) {
-      Serial.printf("%d%s", rxFrame[i], i+1>=numPulsesThisFrame ? "" : ", ");
+    static const bool printRawPulseTimings = true;
+    if (printRawPulseTimings) {
+      Serial.printf("Pulses(%d): ", numPulsesThisFrame);
+      for (uint16_t i=0; i<numPulsesThisFrame; ++i) {
+        Serial.printf("%d%s", rxFrame[i], i+1>=numPulsesThisFrame ? "" : ", ");
+      }
+      Serial.printf(")\n");
     }
-    Serial.printf(")\n");
+
+    bool dropPacket = false;
+    std::bitset<MAX_PULSES> pulseBinary;
+    uint32_t long_pulse_us = 0;
+    uint32_t short_pulse_us = 0;
+    pulseToBinary(rxFrame, numPulsesThisFrame, &pulseBinary, &dropPacket, &long_pulse_us, &short_pulse_us);
+
+    if (!dropPacket) {
+      Serial.printf("\n--\nPulse binary(%d) - Read left to right:\nLong pulse (us): %d\nShort pulse (us): %d\n", numPulsesThisFrame, long_pulse_us, short_pulse_us);
+      for (uint32_t i=0; i<numPulsesThisFrame; ++i) {
+        Serial.printf("%d%s", pulseBinary[i] ? 1 : 0, i != 0 && i%4 == 0 ? " " : "");
+      }
+      Serial.printf("\n--\n");
+    }
+
+    rxFrameReady = false;
   }
 }

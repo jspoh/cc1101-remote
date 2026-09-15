@@ -47,6 +47,8 @@ RF signal:
 
 Binary:
 1000 1000 1111 ...and so on
+where 1 is (1050, 350) and 0 is (350, 1050)
+We can also express as 1001 0101 and use this to check. if `00` or `11` is present, we know the packet is malformed.
 ```
 
 But if we were to do a copy Tx, we need to clean it up, and use only 350 or 1050 values
