@@ -23,11 +23,10 @@ volatile uint32_t numPulsesThisChange =  0;
 
 void IRAM_ATTR onRssiChange() {
   uint32_t now = micros();
-
-  if (rxFrameReady) return;
-
   uint32_t delta = now - lastRssiChangeTime;
   lastRssiChangeTime = now;
+  
+  if (rxFrameReady) return;
 
   if (delta > FRAME_GAP_US) {
     if (numPulsesThisChange > MIN_PULSES) {
@@ -109,8 +108,12 @@ void pulseToBinary(const volatile uint32_t* frame, uint32_t sz, std::bitset<MAX_
 }
 
 void rxSetup() {
-  ELECHOUSE_cc1101.SetRx();
   pinMode(CC1101_GDO0, INPUT);
+
+  ELECHOUSE_cc1101.SpiStrobe(CC1101_SIDLE);
+  ELECHOUSE_cc1101.SpiStrobe(CC1101_SRX);
+
+  ELECHOUSE_cc1101.SetRx();
   attachInterrupt(digitalPinToInterrupt(CC1101_GDO0), onRssiChange, CHANGE);
 }
 
