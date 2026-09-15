@@ -54,6 +54,32 @@ void setup() {
 }
 
 
+void txPulses(const char* pulses, uint32_t long_us, uint32_t short_us, uint32_t gap_us, int repeats) {
+  detachInterrupt(digitalPinToInterrupt(CC1101_GDO0));
+  ELECHOUSE_cc1101.SetTx();
+  pinMode(CC1101_GDO0, OUTPUT);
+
+  delay(2);   // let the chip calibrate before the first pulse
+  Serial.printf("MARCSTATE: %u\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_MARCSTATE) & 0x1F);
+
+  for (int i=0; i<repeats; ++i) {
+    bool power = HIGH;
+    for (const char* p = pulses; *p != '\0'; ++p) {
+      if (*p == ' ') continue;
+      digitalWrite(CC1101_GDO0, power);
+      delayMicroseconds(*p == '1' ? long_us : short_us);
+      power = !power;
+    }
+
+    // gap
+    digitalWrite(CC1101_GDO0, LOW);
+    delayMicroseconds(gap_us);
+  }
+
+  rxSetup();
+}
+
+
 void loop() {
   static uint32_t prev = (unsigned)millis();
   uint32_t now = (unsigned)millis();
@@ -61,4 +87,9 @@ void loop() {
   prev = now;
 
   rxLoop(dt);
+
+  if (Serial.read() == '1') {
+    Serial.println("Transmitting..");
+    txPulses("10010 1011 0010 1011 0101 0101 0011 0011 0011 0010 1100 1101 0011 0011 00", 1100, 375, 10000, 8);
+  }
 }
