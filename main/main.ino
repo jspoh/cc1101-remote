@@ -8,6 +8,48 @@
 // #define CC1101_GD02 5
 
 
+// microseconds (us)
+#define MIN_PULSE_US 150
+#define FRAME_GAP_US 4000   // silence after 4000 us is a gap
+#define MIN_PULSES 24       // ignore frarmes shorter than 24 MIN_PULSES
+#define MAX_PULSES 256       
+
+
+volatile uint32_t rxFrame[MAX_PULSES];    // populate with pulse timings
+volatile uint32_t lastRssiChangeTime = 0;
+volatile bool rxFrameReady = false;
+// change might not define a frame, but a frame must have changes
+volatile uint32_t numPulsesThisFrame = 0;
+volatile uint32_t numPulsesThisChange =  0;
+
+
+void IRAM_ATTR onRssiChange() {
+  uint32_t now = micros();
+  uint32_t delta = now - lastRssiChangeTime;
+  lastRssiChangeTime = now;
+
+  if (rxFrameReady) return;
+
+  if (delta > FRAME_GAP_US) {
+    if (numPulsesThisChange > MIN_PULSES) {
+      numPulsesThisFrame = numPulsesThisChange;
+      rxFrameReady = true;
+    }
+    numPulsesThisChange = 0;
+    return;
+  }
+
+  if (delta < MIN_PULSE_US) {
+    // drop pulse, is noise
+    numPulsesThisChange = 0;
+    return;
+  }
+
+  rxFrame[numPulsesThisChange++] = delta;
+}
+
+
+
 void setup() {
   Serial.begin(115200);
 
@@ -52,13 +94,38 @@ void setup() {
   ELECHOUSE_cc1101.setCrc(0);
 
   ELECHOUSE_cc1101.SetRx();
+  pinMode(CC1101_GDO0, INPUT);
+  attachInterrupt(digitalPinToInterrupt(CC1101_GDO0), onRssiChange, CHANGE);
 
   Serial.println("CC1101 setup complete");
 }
 
+#define PRINT_NOISE_DUR_MS 10000
+volatile uint32_t elapsed_ms = 0;
+
 void loop() {
-    Serial.print(ELECHOUSE_cc1101.getRssi());
-    Serial.print(" dBm  State: ");
-    Serial.println(ELECHOUSE_cc1101.SpiReadStatus(0x35) & 0x1F);
-    delay(100);
+  static uint32_t prev = millis();
+  uint32_t now = millis();
+  uint32_t dt = now - prev;
+  prev = now;
+  elapsed_ms += dt;
+
+  if (elapsed_ms < PRINT_NOISE_DUR_MS) {
+    Serial.print(ELECHOUSE_cc1101.getRssi());   // received signal strength indicator -30dBm(decibel watts) is strong, -90dBm is weak
+    Serial.println(" dBm");
+  }
+
+  /*
+  From testing, background RSSI fluctuates around 93-96dBm
+  */
+
+  if (rxFrameReady) {
+    rxFrameReady = false;
+
+    Serial.printf("Pulses(%d): ", numPulsesThisFrame);
+    for (uint16_t i=0; i<numPulsesThisFrame; ++i) {
+      Serial.printf("%d%s", rxFrame[i], i+1>=numPulsesThisFrame ? "" : ", ");
+    }
+    Serial.printf(")\n");
+  }
 }

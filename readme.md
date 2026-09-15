@@ -20,11 +20,33 @@ E07-M1101D
 | --- | --- | --- |
 | 1 | GND | |
 | 2 | 3V3 | |
-| 3 | GPIO0 | |
+| 3 | GPIO0 | Optional |
 | 4 | GPIO1 | |
 | 5 | GPIO2 | |
 | 6 | GPIO3 | |
 | 7 | GPIO4 | |
-| 8 | GPIO9 | | 
+| 8 | GPIO9 | Optional, not connected | 
 
 CC1101 Pin 8 is NOT REQUIRED, and do not use GPIO9. Will face issues uploading code.
+
+
+## Understanding pulses
+
+Most remotes use `OOK` - `On Off Keying` to communicate. 
+
+Meaning they generally send pulses in a binary state, using the short (350us) or long (1050us) pulses to communicate.
+
+Eg.
+
+```
+Raw: 
+Pulses(59): 1117, 369, 377, 1088, 394, 1094, 385, 1085, 1098, 380, 372, 1096, 391, 1084, 394, 1101, 1080, 378, 1110, 368, 1094, 386, 1107, 374, 1084, 395, 368, 1095, 1111, 371, 373, 1092, 1095, 384, 385, 1105, 1076, 401, 375, 1088, 388, 1088, 1097, 387, 367, 1095, 1116, 368, 1094, 387, 382, 1100, 1106, 371, 369, 1094, 1112, 370, 372)
+
+RF signal:
+----------___---__________---__________ ...and so on
+
+Binary:
+1000 1000 1111 ...and so on
+```
+
+But if we were to do a copy Tx, we need to clean it up, and use only 350 or 1050 values
