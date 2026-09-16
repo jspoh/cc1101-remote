@@ -2,6 +2,7 @@
 #include <bitset>
 
 #include "global.h"
+#include "tx.hpp"
 
 #define TX_ONLY
 
@@ -69,6 +70,14 @@ void setup() {
   rxSetup();
 #endif
 
+  initTxConfig();
+
+  delay(10);
+  Serial.printf("Verify .pulse:\n");
+  for (const auto& [trigger, td] : TX_CONFIG) {
+    Serial.printf("%c: %u %u %u %s\n", TX_CONFIG[trigger].trigger, TX_CONFIG[trigger].long_pulse_us, TX_CONFIG[trigger].short_pulse_us, TX_CONFIG[trigger].pulse_gap_us, TX_CONFIG[trigger].pulse_binary.c_str());
+  }
+
   Serial.println("CC1101 setup complete");
 }
 
@@ -120,10 +129,20 @@ void loop() {
   rxLoop(dt);
 #endif
 
-  if (Serial.read() == '1') {
+  const int serial_ipt = Serial.read();
+
+  if (serial_ipt == 'd') {
     Serial.println("Transmitting..");
     txPulses("10010101100101011010101010011001100110010110011010011001100", 1100, 375, 5000, 8);
     // Serial.println("Tx Done");
     Serial.printf("Tx Done, MARCSTATE: %u\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_MARCSTATE) & 0x1F);
+  }
+
+  for (const auto& [trigger, td] : TX_CONFIG) {
+    if (serial_ipt == trigger) {
+      Serial.printf("Tx using TX_CONFIG from .pulse file with trigger %c\n", trigger);
+      txPulses(td.pulse_binary.c_str(), td.long_pulse_us, td.short_pulse_us, td.pulse_gap_us, 8);
+      Serial.printf("Tx trigger with %c completed\n", trigger);
+    }
   }
 }
