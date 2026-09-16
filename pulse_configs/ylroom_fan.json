@@ -1,0 +1,100 @@
+{
+  "f": {
+    "name": "F/R button",
+    "long_pulse_us": 1201,
+    "short_pulse_us": 397,
+    "pulse_gap_us": 13000,
+    "pulse_binary": "1010101010101001101010010101010110011001011010100"
+  },
+  "l": {
+    "name": "Light on/off",
+    "long_pulse_us": 1203,
+    "short_pulse_us": 395,
+    "pulse_gap_us": 13000,
+    "pulse_binary": "1010101010101001101010010101010110011001011001010"
+  },
+  "o": {
+    "name": "Fan off",
+    "long_pulse_us": 1200,
+    "short_pulse_us": 398,
+    "pulse_gap_us": 13000,
+    "pulse_binary": "1010101010101001101010010101010110011001011001100"
+  },
+  "1": {
+    "name": "Fan speed 1",
+    "long_pulse_us": 1201,
+    "short_pulse_us": 396,
+    "pulse_gap_us": 13000,
+    "pulse_binary": "1010101010101001101010010101010110011001010101100"
+  },
+  "2": {
+    "name": "Fan speed 2",
+    "long_pulse_us": 1199,
+    "short_pulse_us": 398,
+    "pulse_gap_us": 13000,
+    "pulse_binary": "1010101010101001101010010101010110011001010110100"
+  },
+  "3": {
+    "name": "Fan speed 3",
+    "long_pulse_us": 1198,
+    "short_pulse_us": 400,
+    "pulse_gap_us": 13000,
+    "pulse_binary": "1010101010101001101010010101010110011001011010010"
+  },
+  "4": {
+    "name": "Fan speed 4",
+    "long_pulse_us": 1199,
+    "short_pulse_us": 398,
+    "pulse_gap_us": 13000,
+    "pulse_binary": "1010101010101001101010010101010110011001100110010"
+  },
+  "5": {
+    "name": "Fan speed 5",
+    "long_pulse_us": 1195,
+    "short_pulse_us": 403,
+    "pulse_gap_us": 13000,
+    "pulse_binary": "1010101010101001101010010101010110011001100101100"
+  },
+  "6": {
+    "name": "Fan speed 6",
+    "long_pulse_us": 1201,
+    "short_pulse_us": 396,
+    "pulse_gap_us": 13000,
+    "pulse_binary": "1010101010101001101010010101010110011001100101010"
+  },
+  "h": {
+    "name": "1H timer",
+    "long_pulse_us": 1204,
+    "short_pulse_us": 394,
+    "pulse_gap_us": 13000,
+    "pulse_binary": "1010101010101001101010010101010110011001101010010"
+  },
+  "H": {
+    "name": "4H timer",
+    "long_pulse_us": 1199,
+    "short_pulse_us": 399,
+    "pulse_gap_us": 13000,
+    "pulse_binary": "1010101010101001101010010101010110011001100110100"
+  },
+  "c": {
+    "name": "Cycle light temperature",
+    "long_pulse_us": 1201,
+    "short_pulse_us": 397,
+    "pulse_gap_us": 13000,
+    "pulse_binary": "1010101010101001101010010101010110011001101001010"
+  },
+  "-": {
+    "name": "Dim light",
+    "long_pulse_us": 1201,
+    "short_pulse_us": 397,
+    "pulse_gap_us": 13000,
+    "pulse_binary": "1010101010101001101010010101010110011001010110010"
+  },
+  "+": {
+    "name": "Brighten light",
+    "long_pulse_us": 1199,
+    "short_pulse_us": 399,
+    "pulse_gap_us": 13000,
+    "pulse_binary": "1010101010101001101010010101010110011001010101010"
+  }
+}
