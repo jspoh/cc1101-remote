@@ -71,3 +71,42 @@ After taking into account this gap, the remote worked flawlessly.
 59pulses * 4repeats = 236pulses
 236pulses + 3gaps = 239pulses
 ```
+
+# Advanced
+
+`TX_ONLY` flag - don't receive, only transmit. Good for pure remotes after sniffing and cloning RF codes
+
+`.json` file currently created by hand.
+
+Serial monitor provides this:
+```json
+{
+    "name": "Fan off",
+    "long_pulse_us": 1098,
+    "short_pulse_us": 376,
+    "pulse_gap_us": 5938,
+    "pulse_binary": "10010101100101011010101010011001100110011010010110010101101"
+}
+```
+
+but the structure is
+```json
+{
+  "1": {
+    "name": "Fan speed 1",
+    "long_pulse_us": 1102,
+    "short_pulse_us": 373,
+    "pulse_gap_us": 6646,
+    "pulse_binary": "10010101100101011010101010011001100110011010101001100101010"
+  },
+  "2": {
+    "name": "Fan speed 2",
+    "long_pulse_us": 1100,
+    "short_pulse_us": 375,
+    "pulse_gap_us": 5927,
+    "pulse_binary": "10010101100101011010101010011001100110011010100101100101011"
+  }
+}
+```
+
+where the key is the char to send to the serial monitor to trigger the event.
