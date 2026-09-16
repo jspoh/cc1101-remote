@@ -177,10 +177,24 @@ void rxLoop(uint32_t dt_ms) {
     pulseToBinary(rxFrameCopy, n, &pulseBinary, &dropPacket, &long_pulse_us, &short_pulse_us);
 
     if (!dropPacket) {
-      Serial.printf("\n--\nPulse binary(%d) - Read left to right:\nLong pulse (us): %d\nShort pulse (us): %d\nGap (us): %d\n", n, long_pulse_us, short_pulse_us, getMedian(gaps_us, gaps_us_size));
+      const uint32_t median_gap_us = getMedian(gaps_us, gaps_us_size);
+      Serial.printf("\n--\nPulse binary(%d) - Read left to right:\nLong pulse (us): %d\nShort pulse (us): %d\nGap (us): %d\n", n, long_pulse_us, short_pulse_us, median_gap_us);
       for (uint32_t i=0; i<n; ++i) {
         Serial.printf("%d%s", pulseBinary[i] ? 1 : 0, i != 0 && i%4 == 0 ? " " : "");
       }
+      Serial.println("\n```json");
+      Serial.printf("{\n"
+        "\t\"name\": \"\",\n"
+        "\t\"long_pulse_us\": %u,\n"
+        "\t\"short_pulse_us\": %u,\n"
+        "\t\"pulse_gap_us\": %u,\n"
+        "\t\"pulse_binary\": \"",
+        long_pulse_us, short_pulse_us, median_gap_us);
+      for (uint32_t i=0; i<n; ++i) {
+        Serial.printf("%d", pulseBinary[i] ? 1 : 0);
+      }
+      Serial.printf("\"\n}\n");
+      Serial.println("```");
       Serial.printf("\n--\n");
     }
   }
