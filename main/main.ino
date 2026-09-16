@@ -2,7 +2,12 @@
 #include <bitset>
 
 #include "global.h"
+
+#define TX_ONLY
+
+#ifndef TX_ONLY
 #include "rx.hpp"
+#endif
 
 
 void setup() {
@@ -50,13 +55,26 @@ void setup() {
 
   ELECHOUSE_cc1101.setPA(12);   // 12 - max
 
+#ifdef TX_ONLY
+  pinMode(CC1101_GDO0, OUTPUT);
+
+  ELECHOUSE_cc1101.SpiStrobe(CC1101_SIDLE);
+  delay(1);   // let chip finish leaving Rx
+  ELECHOUSE_cc1101.SpiStrobe(CC1101_STX);
+
+  ELECHOUSE_cc1101.SetTx();
+
+  delay(2);   // let the chip calibrate before the first pulse
+#else
   rxSetup();
+#endif
 
   Serial.println("CC1101 setup complete");
 }
 
 
 void txPulses(const char* pulses, uint32_t long_us, uint32_t short_us, uint32_t gap_us, int repeats) {
+#ifndef TX_ONLY
   detachInterrupt(digitalPinToInterrupt(CC1101_GDO0));
   
   pinMode(CC1101_GDO0, OUTPUT);
@@ -68,6 +86,8 @@ void txPulses(const char* pulses, uint32_t long_us, uint32_t short_us, uint32_t 
   ELECHOUSE_cc1101.SetTx();
 
   delay(2);   // let the chip calibrate before the first pulse
+#endif
+
   Serial.printf("MARCSTATE: %u\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_MARCSTATE) & 0x1F);
 
   for (int i=0; i<repeats; ++i) {
@@ -84,7 +104,9 @@ void txPulses(const char* pulses, uint32_t long_us, uint32_t short_us, uint32_t 
     delayMicroseconds(gap_us);
   }
 
+#ifndef TX_ONLY
   rxSetup();
+#endif
 }
 
 
@@ -94,11 +116,13 @@ void loop() {
   uint32_t dt = now - prev;
   prev = now;
 
+#ifndef TX_ONLY
   rxLoop(dt);
+#endif
 
   if (Serial.read() == '1') {
     Serial.println("Transmitting..");
-    txPulses("10101 0101 0101 0011 0101 0010 1010 1011 0011 0010 1100 1010", 1100, 375, 12711, 8);
+    txPulses("10010101100101011010101010011001100110010110011010011001100", 1100, 375, 5000, 8);
     // Serial.println("Tx Done");
     Serial.printf("Tx Done, MARCSTATE: %u\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_MARCSTATE) & 0x1F);
   }
