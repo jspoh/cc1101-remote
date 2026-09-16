@@ -1,0 +1,100 @@
+{
+  "o": {
+    "name": "Fan off",
+    "long_pulse_us": 1098,
+    "short_pulse_us": 376,
+    "pulse_gap_us": 5938,
+    "pulse_binary": "10010101100101011010101010011001100110011010010110010101101"
+  },
+  "t": {
+    "name": "Temperature button (auto?)",
+    "long_pulse_us": 1099,
+    "short_pulse_us": 375,
+    "pulse_gap_us": 5942,
+    "pulse_binary": "10010101100101011010101010011001100110011001010101100110101"
+  },
+  "1": {
+    "name": "Fan speed 1",
+    "long_pulse_us": 1102,
+    "short_pulse_us": 373,
+    "pulse_gap_us": 6646,
+    "pulse_binary": "10010101100101011010101010011001100110011010101001100101010"
+  },
+  "2": {
+    "name": "Fan speed 2",
+    "long_pulse_us": 1100,
+    "short_pulse_us": 375,
+    "pulse_gap_us": 5927,
+    "pulse_binary": "10010101100101011010101010011001100110011010100101100101011"
+  },
+  "3": {
+    "name": "",
+    "long_pulse_us": 1101,
+    "short_pulse_us": 375,
+    "pulse_gap_us": 6654,
+    "pulse_binary": "10010101100101011010101010011001100110011010011001100101100"
+  },
+  "4": {
+    "name": "",
+    "long_pulse_us": 1099,
+    "short_pulse_us": 377,
+    "pulse_gap_us": 5930,
+    "pulse_binary": "10010101100101011010101010011001100110011010010101100101101"
+  },
+  "5": {
+    "name": "",
+    "long_pulse_us": 1103,
+    "short_pulse_us": 373,
+    "pulse_gap_us": 6631,
+    "pulse_binary": "10010101100101011010101010011001100110011001101001100110010"
+  },
+  "6": {
+    "name": "",
+    "long_pulse_us": 1099,
+    "short_pulse_us": 376,
+    "pulse_gap_us": 5927,
+    "pulse_binary": "10010101100101011010101010011001100110011001100101100110011"
+  },
+  "w": {
+    "name": "",
+    "long_pulse_us": 1096,
+    "short_pulse_us": 379,
+    "pulse_gap_us": 6652,
+    "pulse_binary": "10010101100101011010101010011001100110011010011010010101100"
+  },
+  "y": {
+    "name": "",
+    "long_pulse_us": 1097,
+    "short_pulse_us": 378,
+    "pulse_gap_us": 6649,
+    "pulse_binary": "10010101100101011010101010011001100110011001101010010110010"
+  },
+  "b": {
+    "name": "",
+    "long_pulse_us": 1099,
+    "short_pulse_us": 376,
+    "pulse_gap_us": 5931,
+    "pulse_binary": "10010101100101011010101010011001100110011010100110010101011"
+  },
+  "-": {
+    "name": "",
+    "long_pulse_us": 1098,
+    "short_pulse_us": 377,
+    "pulse_gap_us": 6659,
+    "pulse_binary": "10010101100101011010101010011001100110010110101010011001010"
+  },
+  "l": {
+    "name": "",
+    "long_pulse_us": 1102,
+    "short_pulse_us": 373,
+    "pulse_gap_us": 6660,
+    "pulse_binary": "10010101100101011010101010011001100110010110011010011001100"
+  },
+  "+": {
+    "name": "",
+    "long_pulse_us": 1094,
+    "short_pulse_us": 380,
+    "pulse_gap_us": 6675,
+    "pulse_binary": "10010101100101011010101010011001100110011001011010010110100"
+  }
+}
