@@ -18,6 +18,8 @@ void setup() {
   ELECHOUSE_cc1101.setGDO0(CC1101_GDO0);
   ELECHOUSE_cc1101.Init();
 
+  delay(1000);
+
   if (ELECHOUSE_cc1101.getCC1101()){         // Check the CC1101 Spi connection.
     Serial.println("CC1101 Connection OK");
   } else{
@@ -72,10 +74,10 @@ void setup() {
 
   initTxConfig();
 
-  delay(10);
   Serial.printf("Verify .pulse:\n");
   for (const auto& [trigger, td] : TX_CONFIG) {
     Serial.printf("%c: %u %u %u %s\n", TX_CONFIG[trigger].trigger, TX_CONFIG[trigger].long_pulse_us, TX_CONFIG[trigger].short_pulse_us, TX_CONFIG[trigger].pulse_gap_us, TX_CONFIG[trigger].pulse_binary.c_str());
+    Serial.flush();
   }
 
   Serial.println("CC1101 setup complete");
