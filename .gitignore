@@ -1,2 +1,3 @@
 .vscode
 pulse_configs/*.secret
+main/secrets.h

@@ -3,6 +3,7 @@
 
 #include "global.h"
 #include "tx.hpp"
+#include "wifi.hpp"
 
 #define TX_ONLY
 
@@ -13,6 +14,10 @@
 
 void setup() {
   Serial.begin(115200);
+
+#ifdef TX_ONLY
+  wifiSetup();
+#endif
 
   ELECHOUSE_cc1101.setSpiPin(CC1101_SCK, CC1101_MISO, CC1101_MOSI, CC1101_CSN);
   ELECHOUSE_cc1101.setGDO0(CC1101_GDO0);
