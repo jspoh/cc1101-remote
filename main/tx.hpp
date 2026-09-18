@@ -43,5 +43,8 @@ extern std::unordered_map<char, TX_DATA> TX_CONFIG;
 
 void initTxConfig();
 
+void txPulses(const char* pulses, uint32_t long_us, uint32_t short_us, uint32_t gap_us, int repeats);
+
+
 
 #endif

@@ -13,6 +13,9 @@
 #define __GLOBAL_H__
 
 
+#define TX_ONLY
+
+
 #define CC1101_GDO0 0
 #define CC1101_CSN  1
 #define CC1101_SCK  2

@@ -11,6 +11,8 @@
 
 
 #include "tx.hpp"
+#include <Arduino.h>
+#include <ELECHOUSE_CC1101_SRC_DRV.h>
 
 
 std::unordered_map<char, TX_DATA> TX_CONFIG;
@@ -46,4 +48,41 @@ void initTxConfig() {
     }
     ++i;
   }
+}
+
+
+void txPulses(const char* pulses, uint32_t long_us, uint32_t short_us, uint32_t gap_us, int repeats) {
+#ifndef TX_ONLY
+  detachInterrupt(digitalPinToInterrupt(CC1101_GDO0));
+  
+  pinMode(CC1101_GDO0, OUTPUT);
+
+  ELECHOUSE_cc1101.SpiStrobe(CC1101_SIDLE);
+  delay(1);   // let chip finish leaving Rx
+  ELECHOUSE_cc1101.SpiStrobe(CC1101_STX);
+
+  ELECHOUSE_cc1101.SetTx();
+
+  delay(2);   // let the chip calibrate before the first pulse
+#endif
+
+  Serial.printf("MARCSTATE: %u\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_MARCSTATE) & 0x1F);
+
+  for (int i=0; i<repeats; ++i) {
+    bool power = HIGH;
+    for (const char* p = pulses; *p != '\0'; ++p) {
+      if (*p == ' ') continue;
+      digitalWrite(CC1101_GDO0, power);
+      delayMicroseconds(*p == '1' ? long_us : short_us);
+      power = !power;
+    }
+
+    // gap
+    digitalWrite(CC1101_GDO0, LOW);
+    delayMicroseconds(gap_us);
+  }
+
+#ifndef TX_ONLY
+  rxSetup();
+#endif
 }
