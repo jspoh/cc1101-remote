@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Fan Remote</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .fan-spin { animation: spin var(--spin-duration, 1s) linear infinite; }
+    button { -webkit-tap-highlight-color: transparent; }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 flex items-center justify-center p-4 select-none">
+
+  <main class="w-full max-w-sm bg-slate-800/60 backdrop-blur rounded-[2.5rem] border border-slate-700 shadow-2xl p-6 space-y-6">
+
+    <!-- Header -->
+    <header class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-semibold tracking-tight">Ceiling Fan</h1>
+        <p class="text-xs text-slate-400">Living Room</p>
+      </div>
+      <div class="flex items-center gap-2 text-xs">
+        <span id="statusDot" class="h-2.5 w-2.5 rounded-full bg-slate-500"></span>
+        <span id="statusText" class="text-slate-400">Idle</span>
+      </div>
+    </header>
+
+    <!-- Fan visual -->
+    <section class="flex flex-col items-center py-2">
+      <div class="relative h-36 w-36 rounded-full bg-slate-900/70 border border-slate-700 flex items-center justify-center">
+        <div id="lightGlow" class="absolute inset-0 rounded-full transition-all duration-300 opacity-0"></div>
+        <svg id="fanIcon" viewBox="0 0 100 100" class="relative h-24 w-24 text-sky-400">
+          <g fill="currentColor">
+            <path d="M50 50 C 45 30, 48 10, 60 8 C 70 7, 70 25, 50 50 Z" />
+            <path d="M50 50 C 45 30, 48 10, 60 8 C 70 7, 70 25, 50 50 Z" transform="rotate(120 50 50)" />
+            <path d="M50 50 C 45 30, 48 10, 60 8 C 70 7, 70 25, 50 50 Z" transform="rotate(240 50 50)" />
+          </g>
+          <circle cx="50" cy="50" r="8" class="fill-slate-200" />
+        </svg>
+      </div>
+      <p class="mt-3 text-sm text-slate-300">
+        Fan: <span id="fanLabel" class="font-semibold">Off</span>
+        <span class="mx-2 text-slate-600">|</span>
+        Light: <span id="lightLabel" class="font-semibold">Off</span>
+      </p>
+    </section>
+
+    <!-- Light controls -->
+    <section class="grid grid-cols-2 gap-3">
+      <button id="lightBtn" data-cmd="l"
+        class="flex flex-col items-center justify-center gap-1 rounded-2xl py-4 bg-slate-700 hover:bg-slate-600 active:scale-95 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0012 3z" />
+        </svg>
+        <span class="text-sm font-medium">Light</span>
+      </button>
+
+      <button data-cmd="c"
+        class="flex flex-col items-center justify-center gap-1 rounded-2xl py-4 bg-slate-700 hover:bg-slate-600 active:scale-95 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M5.1 15A7 7 0 0018.4 17M18.9 9A7 7 0 005.6 7" />
+        </svg>
+        <span class="text-sm font-medium">Color Temp</span>
+      </button>
+    </section>
+
+    <!-- Fan speed -->
+    <section class="space-y-3">
+      <h2 class="text-xs uppercase tracking-widest text-slate-400">Fan Speed</h2>
+      <div id="speedGrid" class="grid grid-cols-3 gap-3">
+        <button data-cmd="1" data-speed="1" class="speed-btn rounded-2xl py-4 text-lg font-semibold bg-slate-700 hover:bg-slate-600 active:scale-95 transition">1</button>
+        <button data-cmd="2" data-speed="2" class="speed-btn rounded-2xl py-4 text-lg font-semibold bg-slate-700 hover:bg-slate-600 active:scale-95 transition">2</button>
+        <button data-cmd="3" data-speed="3" class="speed-btn rounded-2xl py-4 text-lg font-semibold bg-slate-700 hover:bg-slate-600 active:scale-95 transition">3</button>
+        <button data-cmd="4" data-speed="4" class="speed-btn rounded-2xl py-4 text-lg font-semibold bg-slate-700 hover:bg-slate-600 active:scale-95 transition">4</button>
+        <button data-cmd="5" data-speed="5" class="speed-btn rounded-2xl py-4 text-lg font-semibold bg-slate-700 hover:bg-slate-600 active:scale-95 transition">5</button>
+        <button data-cmd="6" data-speed="6" class="speed-btn rounded-2xl py-4 text-lg font-semibold bg-slate-700 hover:bg-slate-600 active:scale-95 transition">6</button>
+      </div>
+      <button data-cmd="o" data-speed="0"
+        class="speed-btn w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-semibold bg-rose-600/80 hover:bg-rose-600 active:scale-95 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v9M6.3 6.3a8 8 0 1011.4 0" />
+        </svg>
+        Fan Off
+      </button>
+    </section>
+
+    <footer class="text-center text-[11px] text-slate-500">
+      Target: <span id="targetHost" class="font-mono"></span>
+    </footer>
+  </main>
+
+  <script>
+    const PORT = 2926;
+    // The remote is served by the device itself, so its own host is the target.
+    // Falls back to localhost when opened directly from disk.
+    const HOST = window.location.hostname || 'localhost';
+    const BASE_URL = `http://${HOST}:${PORT}`;
+
+    const state = { light: false, speed: 0 };
+
+    const $ = (id) => document.getElementById(id);
+    $('targetHost').textContent = `${HOST}:${PORT}`;
+
+    function setStatus(kind, text) {
+      const colors = { idle: 'bg-slate-500', busy: 'bg-amber-400 animate-pulse', ok: 'bg-emerald-400', err: 'bg-rose-500' };
+      $('statusDot').className = `h-2.5 w-2.5 rounded-full ${colors[kind]}`;
+      $('statusText').textContent = text;
+    }
+
+    async function sendCommand(cmd) {
+      setStatus('busy', 'Sending…');
+      try {
+        // no-cors: the device is on a different port (different origin),
+        // so we fire the request without needing CORS headers from it.
+        await fetch(`${BASE_URL}/tx?cmd=${encodeURIComponent(cmd)}`, { mode: 'no-cors', cache: 'no-store' });
+        setStatus('ok', 'Sent');
+        return true;
+      } catch (e) {
+        console.error('Command failed:', cmd, e);
+        setStatus('err', 'Failed');
+        return false;
+      }
+    }
+
+    function render() {
+      // Light
+      const lightBtn = $('lightBtn');
+      lightBtn.classList.toggle('bg-amber-400', state.light);
+      lightBtn.classList.toggle('text-slate-900', state.light);
+      lightBtn.classList.toggle('hover:bg-amber-300', state.light);
+      lightBtn.classList.toggle('bg-slate-700', !state.light);
+      lightBtn.classList.toggle('hover:bg-slate-600', !state.light);
+      $('lightLabel').textContent = state.light ? 'On' : 'Off';
+      const glow = $('lightGlow');
+      glow.style.opacity = state.light ? '1' : '0';
+      glow.style.boxShadow = state.light ? '0 0 60px 10px rgba(251,191,36,0.45)' : 'none';
+
+      // Fan speed buttons
+      document.querySelectorAll('#speedGrid .speed-btn').forEach((btn) => {
+        const active = Number(btn.dataset.speed) === state.speed;
+        btn.classList.toggle('bg-sky-500', active);
+        btn.classList.toggle('hover:bg-sky-400', active);
+        btn.classList.toggle('ring-2', active);
+        btn.classList.toggle('ring-sky-300', active);
+        btn.classList.toggle('bg-slate-700', !active);
+        btn.classList.toggle('hover:bg-slate-600', !active);
+      });
+
+      // Fan animation
+      const fan = $('fanIcon');
+      $('fanLabel').textContent = state.speed ? `Speed ${state.speed}` : 'Off';
+      if (state.speed) {
+        fan.style.setProperty('--spin-duration', `${(1.6 / state.speed).toFixed(2)}s`);
+        fan.classList.add('fan-spin');
+        fan.classList.replace('text-slate-500', 'text-sky-400');
+      } else {
+        fan.classList.remove('fan-spin');
+        fan.classList.replace('text-sky-400', 'text-slate-500');
+      }
+    }
+
+    document.querySelectorAll('button[data-cmd]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const cmd = btn.dataset.cmd;
+        if (!(await sendCommand(cmd))) return;
+        if (cmd === 'l') state.light = !state.light;
+        else if (cmd === 'o') state.speed = 0;
+        else if (/^[1-6]$/.test(cmd)) state.speed = Number(cmd);
+        render();
+      });
+    });
+
+    render();
+  </script>
+</body>
+</html>
