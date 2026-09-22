@@ -15,6 +15,7 @@
 
 
 WebServer server(SERVER_PORT);
+WebServer webui_server(WEBUI_PORT);
 
 
 void setupRoutes() {
@@ -32,6 +33,10 @@ void setupRoutes() {
       }
     }
     server.send(success ? 200 : 400, "text/plain", success ? "ok" : "malformed. Usage: <ip>:<port>/tx?cmd=<byte>");
+  });
+
+  webui_server.on("/", HTTP_GET, []() {
+    webui_server.send(200, "text/html", WEBUI_TEMPLATE.c_str());
   });
 }
 
@@ -77,12 +82,14 @@ void wifiSetup() {
   setupRoutes();
   Serial.printf("Done.\n");
 
-  Serial.printf("Starting server..\n");
+  Serial.printf("Starting servers..\n");
   server.begin();
+  webui_server.begin();
   Serial.printf("Done.\n");
 }
 
 
 void wifiEventHandler() {
   server.handleClient();
+  webui_server.handleClient();
 }
