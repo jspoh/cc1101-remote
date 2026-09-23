@@ -1,12 +1,7 @@
 /**
- * @file rx.h
+ * @file rx.hpp
  * @author Poh Jing Seng (hello@jspoh.dev)
- * @brief 
- * @version 0.1
  * @date 2026-09-16
- * 
- * @copyright Copyright (c) 2026
- * 
  */
 
 #ifndef __RX_H__
@@ -19,6 +14,7 @@
 
 static constexpr uint32_t PRINT_NOISE_DUR_MS = 10000;
 
+// --- fixed-code (raw OOK long/short) path, unchanged: for the fans etc. ---
 void pulseToBinary(const uint32_t* frame, uint32_t sz, std::bitset<MAX_PULSES>* out, bool* out_drop, uint32_t* out_long_us, uint32_t* out_short_us);
 
 void IRAM_ATTR onRssiChange();

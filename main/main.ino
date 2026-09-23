@@ -76,10 +76,21 @@ void setup() {
 #endif
 
   initTxConfig();
+  initNiceConfig();
 
-  Serial.printf("Verify .pulse:\n");
+  Serial.printf("Verify .pulse (fixed-code):\n");
   for (const auto& [trigger, td] : TX_CONFIG) {
     Serial.printf("%c: %u %u %u %s\n", TX_CONFIG[trigger].trigger, TX_CONFIG[trigger].long_pulse_us, TX_CONFIG[trigger].short_pulse_us, TX_CONFIG[trigger].pulse_gap_us, TX_CONFIG[trigger].pulse_binary.c_str());
+    Serial.flush();
+  }
+
+  Serial.printf("Verify Nice Flor-S remotes (rolling-code):\n");
+  for (const auto& r : NICE_REMOTES) {
+    // next_counter is the live value persisted in flash (falls back to the
+    // config seed until the first press writes NVS)
+    const uint16_t next_counter = niceCounterPeek(r.serial, r.seed_counter);
+    Serial.printf("%c: serial=0x%07X btncode=0x%X seed=%u next_counter=%u\n",
+                  r.trigger, r.serial, r.btncode, r.seed_counter, next_counter);
     Serial.flush();
   }
 
@@ -101,7 +112,7 @@ void loop() {
 
   if (serial_ipt == 'd') {
     Serial.println("Transmitting..");
-    txPulses("10010101100101011010101010011001100110010110011010011001100", 1100, 375, 5000, 8);
+    txPulses("11010110011001010101011010101010101010101010011010011010100101101001101010101001100101010101100101010110101", 1000, 500, 18800, 8);
     // Serial.println("Tx Done");
     Serial.printf("Tx Done, MARCSTATE: %u\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_MARCSTATE) & 0x1F);
   }
@@ -111,6 +122,16 @@ void loop() {
       Serial.printf("Tx using TX_CONFIG from .pulse file with trigger %c\n", trigger);
       txPulses(td.pulse_binary.c_str(), td.long_pulse_us, td.short_pulse_us, td.pulse_gap_us, 8);
       Serial.printf("Tx trigger with %c completed\n", trigger);
+    }
+  }
+
+  // rolling-code remotes: advance the persisted counter, then synthesise a press
+  for (const auto& r : NICE_REMOTES) {
+    if (serial_ipt == r.trigger) {
+      const uint16_t counter = niceCounterNext(r.serial, r.seed_counter);
+      Serial.printf("Tx Nice Flor-S %c: serial=0x%07X counter=%u btncode=0x%X\n", r.trigger, r.serial, counter, r.btncode);
+      txNiceFlorS(r.serial, counter, r.btncode, 1);   // 1 burst of 16 parcels == one press (one tap)
+      Serial.printf("Tx Nice Flor-S %c completed\n", r.trigger);
     }
   }
 

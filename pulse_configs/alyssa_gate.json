@@ -1,0 +1,16 @@
+{
+  "m": {
+    "name": "Gate open (main)",
+    "type": "nice_flor_s",
+    "serial": "0x347A033",
+    "counter": 45777,
+    "btncode": "0x1"
+  },
+  "s": {
+    "name": "Gate button 2",
+    "type": "nice_flor_s",
+    "serial": "0x347A033",
+    "counter": 45777,
+    "btncode": "0x2"
+  }
+}

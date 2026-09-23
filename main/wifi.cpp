@@ -23,6 +23,7 @@ void setupRoutes() {
     bool success = false;
     String cmdStr = server.arg("cmd");
     const char cmd = cmdStr[0];
+    // fixed-code remotes (raw replay)
     for (const auto& [trigger, td] : TX_CONFIG) {
       if (cmd == trigger) {
         Serial.printf("Tx request from network received: %c\n", cmd);
@@ -32,6 +33,21 @@ void setupRoutes() {
         break;
       }
     }
+
+    // rolling-code remotes (Nice Flor-S): advance the persisted counter, then synthesise
+    if (!success) {
+      for (const auto& r : NICE_REMOTES) {
+        if (cmd == r.trigger) {
+          const uint16_t counter = niceCounterNext(r.serial, r.seed_counter);
+          Serial.printf("Tx Nice Flor-S from network: %c serial=0x%07X counter=%u btncode=0x%X\n", cmd, r.serial, counter, r.btncode);
+          txNiceFlorS(r.serial, counter, r.btncode, 1);   // 1 burst == one press (one tap)
+          Serial.printf("Tx Nice Flor-S %c completed\n", cmd);
+          success = true;
+          break;
+        }
+      }
+    }
+
     server.send(success ? 200 : 400, "text/plain", success ? "ok" : "malformed. Usage: <ip>:<port>/tx?cmd=<byte>");
   });
 
@@ -44,10 +60,13 @@ void setupRoutes() {
 void wifiSetup() {
   Serial.printf("Connecting to WiFi network %s\n", WIFI_SSID);
   WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);   // disable modem power-save: cuts response latency, stops stalls
   for (int i=0; i<MAX_WIFI_CONN_RETRIES; ++i) {
     Serial.printf("Attempt %d/%d | %d\n", i+1, MAX_WIFI_CONN_RETRIES, WiFi.status());
 
-    WiFi.setTxPower(WIFI_POWER_8_5dBm);
+    // 8.5 dBm was far too low: tiny packets (ping, /tx) get through but the ~12 KB
+    // page can't finish over a lossy link. 17 dBm is a solid default.
+    WiFi.setTxPower(WIFI_POWER_17dBm);
 
     WiFi.disconnect(true);
     delay(100);

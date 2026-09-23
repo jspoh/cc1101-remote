@@ -40,7 +40,7 @@ const std::string WEBUI_TEMPLATE = R"HTML(<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Fan Remote</title>
+  <title>Gate Remote</title>
   <script>
     // Apply the theme before first paint to avoid a light/dark flash.
     (function () {
@@ -54,9 +54,14 @@ const std::string WEBUI_TEMPLATE = R"HTML(<!DOCTYPE html>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config = { darkMode: 'class' };</script>
   <style>
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .fan-spin { animation: spin var(--spin-duration, 1s) linear infinite; }
     button { -webkit-tap-highlight-color: transparent; }
+    .hold-btn { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+    .ring-progress { transition: stroke-dashoffset 0s; }
+    .ring-progress.reset { transition: stroke-dashoffset 250ms ease-out; }
+    @keyframes fired { 0% { transform: scale(1); } 40% { transform: scale(1.08); } 100% { transform: scale(1); } }
+    .fired { animation: fired 350ms ease-out; }
+    @keyframes blink { 50% { opacity: 0.25; } }
+    .blink { animation: blink 0.8s step-end infinite; }
   </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-slate-100 via-white to-slate-200 text-slate-900 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 dark:text-slate-100 flex items-center justify-center p-4 select-none transition-colors">
@@ -66,8 +71,8 @@ const std::string WEBUI_TEMPLATE = R"HTML(<!DOCTYPE html>
     <!-- Header -->
     <header class="flex items-center justify-between">
       <div>
-        <h1 class="text-xl font-semibold tracking-tight">Ceiling Fan</h1>
-        <p class="text-xs text-slate-500 dark:text-slate-400">Living Room</p>
+        <h1 class="text-xl font-semibold tracking-tight">Gate</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400">Main &amp; pedestrian</p>
       </div>
       <div class="flex items-center gap-3">
         <div class="flex items-center gap-2 text-xs">
@@ -88,62 +93,74 @@ const std::string WEBUI_TEMPLATE = R"HTML(<!DOCTYPE html>
       </div>
     </header>
 
-    <!-- Fan visual -->
-    <section class="flex flex-col items-center py-2">
-      <div class="relative h-36 w-36 rounded-full bg-slate-100 border border-slate-200 dark:bg-slate-900/70 dark:border-slate-700 flex items-center justify-center">
-        <div id="lightGlow" class="absolute inset-0 rounded-full transition-all duration-300 opacity-0"></div>
-        <svg id="fanIcon" viewBox="0 0 100 100" class="relative h-24 w-24 text-sky-400">
-          <g fill="currentColor">
-            <path d="M50 50 C 45 30, 48 10, 60 8 C 70 7, 70 25, 50 50 Z" />
-            <path d="M50 50 C 45 30, 48 10, 60 8 C 70 7, 70 25, 50 50 Z" transform="rotate(120 50 50)" />
-            <path d="M50 50 C 45 30, 48 10, 60 8 C 70 7, 70 25, 50 50 Z" transform="rotate(240 50 50)" />
+    <!-- Gate visual -->
+    <section class="rounded-3xl bg-slate-100 border border-slate-200 dark:bg-slate-900/70 dark:border-slate-700 p-4">
+      <svg viewBox="0 0 200 90" class="w-full">
+        <defs>
+          <clipPath id="gateClip"><rect x="20" y="0" width="160" height="90" /></clipPath>
+        </defs>
+        <!-- ground / track -->
+        <rect x="0" y="78" width="200" height="3" rx="1.5" class="fill-slate-300 dark:fill-slate-700" />
+        <!-- sliding panel -->
+        <g clip-path="url(#gateClip)">
+          <g id="gatePanel">
+            <rect x="20" y="22" width="160" height="4" class="fill-slate-500 dark:fill-slate-400" />
+            <rect x="20" y="70" width="160" height="4" class="fill-slate-500 dark:fill-slate-400" />
+            <g class="fill-slate-500 dark:fill-slate-400">
+              <rect x="24" y="22" width="3" height="52" /><rect x="38" y="22" width="3" height="52" />
+              <rect x="52" y="22" width="3" height="52" /><rect x="66" y="22" width="3" height="52" />
+              <rect x="80" y="22" width="3" height="52" /><rect x="94" y="22" width="3" height="52" />
+              <rect x="108" y="22" width="3" height="52" /><rect x="122" y="22" width="3" height="52" />
+              <rect x="136" y="22" width="3" height="52" /><rect x="150" y="22" width="3" height="52" />
+              <rect x="164" y="22" width="3" height="52" /><rect x="174" y="22" width="3" height="52" />
+            </g>
+            <circle cx="40" cy="76" r="3" class="fill-slate-400 dark:fill-slate-500" />
+            <circle cx="160" cy="76" r="3" class="fill-slate-400 dark:fill-slate-500" />
           </g>
-          <circle cx="50" cy="50" r="8" class="fill-slate-600 dark:fill-slate-200" />
-        </svg>
+        </g>
+        <!-- pillars -->
+        <rect x="8" y="12" width="12" height="67" rx="2" class="fill-slate-400 dark:fill-slate-600" />
+        <rect x="180" y="12" width="12" height="67" rx="2" class="fill-slate-400 dark:fill-slate-600" />
+        <!-- warning lamp -->
+        <circle id="lamp" cx="186" cy="8" r="4" class="fill-slate-300 dark:fill-slate-700" />
+      </svg>
+
+      <div class="mt-3 flex items-center justify-between text-sm">
+        <span>Main gate: <span id="gateLabel" class="font-semibold">Closed</span></span>
+        <span id="gatePct" class="font-mono text-slate-500 dark:text-slate-400">0%</span>
       </div>
-      <p class="mt-3 text-sm text-slate-600 dark:text-slate-300">
-        Fan: <span id="fanLabel" class="font-semibold">Off</span>
-        <span class="mx-2 text-slate-300 dark:text-slate-600">|</span>
-        Light: <span id="lightLabel" class="font-semibold">Off</span>
-      </p>
+      <div class="mt-2 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+        <div id="gateBar" class="h-full w-0 bg-sky-500"></div>
+      </div>
+      <p class="mt-2 text-[11px] text-slate-400 dark:text-slate-500">Position is estimated from the commands sent. There's no gate sensor.</p>
     </section>
 
-    <!-- Light controls -->
-    <section class="grid grid-cols-2 gap-3">
-      <button id="lightBtn" data-cmd="l"
-        class="flex flex-col items-center justify-center gap-1 rounded-2xl py-4 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 active:scale-95 transition">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0012 3z" />
+    <!-- Hold buttons -->
+    <section class="grid grid-cols-2 gap-4">
+      <button data-cmd="m" data-label="Main Gate" class="hold-btn group relative text-white aspect-square rounded-full bg-emerald-600/80 hover:bg-emerald-600 flex flex-col items-center justify-center gap-1 outline-none focus-visible:ring-2 focus-visible:ring-emerald-300">
+        <svg viewBox="0 0 100 100" class="absolute inset-0 h-full w-full -rotate-90 pointer-events-none">
+          <circle cx="50" cy="50" r="46" fill="none" stroke-width="5" class="stroke-white/15" />
+          <circle cx="50" cy="50" r="46" fill="none" stroke-width="5" stroke-linecap="round" class="ring-progress stroke-white" />
         </svg>
-        <span class="text-sm font-medium">Light</span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 7l-5 5 5 5M16 7l5 5-5 5" />
+        </svg>
+        <span class="text-base font-semibold">Main Gate</span>
+        <span class="text-[10px] text-white/80">Open · Pause · Close</span>
+        <span class="hint text-[11px] text-white/70">Hold</span>
       </button>
 
-      <button data-cmd="c"
-        class="flex flex-col items-center justify-center gap-1 rounded-2xl py-4 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 active:scale-95 transition">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M5.1 15A7 7 0 0018.4 17M18.9 9A7 7 0 005.6 7" />
+      <button data-cmd="s" data-label="Pedestrian Gate" class="hold-btn group relative text-white aspect-square rounded-full bg-sky-600/80 hover:bg-sky-600 flex flex-col items-center justify-center gap-1 outline-none focus-visible:ring-2 focus-visible:ring-sky-300">
+        <svg viewBox="0 0 100 100" class="absolute inset-0 h-full w-full -rotate-90 pointer-events-none">
+          <circle cx="50" cy="50" r="46" fill="none" stroke-width="5" class="stroke-white/15" />
+          <circle cx="50" cy="50" r="46" fill="none" stroke-width="5" stroke-linecap="round" class="ring-progress stroke-white" />
         </svg>
-        <span class="text-sm font-medium">Color Temp</span>
-      </button>
-    </section>
-
-    <!-- Fan speed -->
-    <section class="space-y-3">
-      <h2 class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">Fan Speed</h2>
-      <div id="speedGrid" class="grid grid-cols-3 gap-3">
-        <button data-cmd="1" data-speed="1" class="speed-btn rounded-2xl py-4 text-lg font-semibold active:scale-95 transition">1</button>
-        <button data-cmd="2" data-speed="2" class="speed-btn rounded-2xl py-4 text-lg font-semibold active:scale-95 transition">2</button>
-        <button data-cmd="3" data-speed="3" class="speed-btn rounded-2xl py-4 text-lg font-semibold active:scale-95 transition">3</button>
-        <button data-cmd="4" data-speed="4" class="speed-btn rounded-2xl py-4 text-lg font-semibold active:scale-95 transition">4</button>
-        <button data-cmd="5" data-speed="5" class="speed-btn rounded-2xl py-4 text-lg font-semibold active:scale-95 transition">5</button>
-        <button data-cmd="6" data-speed="6" class="speed-btn rounded-2xl py-4 text-lg font-semibold active:scale-95 transition">6</button>
-      </div>
-      <button data-cmd="o" data-speed="0"
-        class="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-semibold text-white bg-rose-600/90 hover:bg-rose-600 active:scale-95 transition">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v9M6.3 6.3a8 8 0 1011.4 0" />
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="5" r="2" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v6m0 0l-3 7m3-7l3 7M8 11h8" />
         </svg>
-        Fan Off
+        <span class="text-base font-semibold">Pedestrian</span>
+        <span class="text-[10px] text-white/80">Open side gate</span>
+        <span class="hint text-[11px] text-white/70">Hold</span>
       </button>
     </section>
 
@@ -192,23 +209,16 @@ const std::string WEBUI_TEMPLATE = R"HTML(<!DOCTYPE html>
 
     // ---------- Remote ----------
     const PORT = 2926;
-    // The remote is served by the device itself, so its own host is the target.
-    // Falls back to localhost when opened directly from disk.
     const HOST = window.location.hostname || 'localhost';
     const BASE_URL = `http://${HOST}:${PORT}`;
-
-    const state = { light: false, speed: 0 };
+    const HOLD_MS = 1000;          // how long a button must be held
+    const TRAVEL_MS = 15000;       // estimated full open/close time — adjust to match the real gate
+    const REQUEST_TIMEOUT_MS = 4000;
 
     const $ = (id) => document.getElementById(id);
     $('targetHost').textContent = `${HOST}:${PORT}`;
 
-    // Swap between two class sets depending on a condition.
-    function setClasses(el, cond, onClasses, offClasses) {
-      onClasses.split(' ').forEach((c) => el.classList.toggle(c, cond));
-      offClasses.split(' ').forEach((c) => el.classList.toggle(c, !cond));
-    }
-    const NEUTRAL = 'bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600';
-
+    // ---------- Status ----------
     function setStatus(kind, text) {
       const colors = { idle: 'bg-slate-500', busy: 'bg-amber-400 animate-pulse', ok: 'bg-emerald-400', err: 'bg-rose-500' };
       $('statusDot').className = `h-2.5 w-2.5 rounded-full ${colors[kind]}`;
@@ -217,58 +227,137 @@ const std::string WEBUI_TEMPLATE = R"HTML(<!DOCTYPE html>
 
     async function sendCommand(cmd) {
       setStatus('busy', 'Sending…');
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
       try {
-        // no-cors: the device is on a different port (different origin),
-        // so we fire the request without needing CORS headers from it.
-        await fetch(`${BASE_URL}/tx?cmd=${encodeURIComponent(cmd)}`, { mode: 'no-cors', cache: 'no-store' });
-        setStatus('ok', 'Sent');
+        // no-cors: the device is on a different port (different origin), so the
+        // response is opaque. A resolved fetch means the device answered, nothing more.
+        await fetch(`${BASE_URL}/tx?cmd=${encodeURIComponent(cmd)}`, { mode: 'no-cors', cache: 'no-store', signal: ctrl.signal });
+        setStatus('ok', 'Delivered');
         return true;
       } catch (e) {
         console.error('Command failed:', cmd, e);
-        setStatus('err', 'Failed');
+        setStatus('err', e.name === 'AbortError' ? 'Timed out' : 'Failed');
         return false;
+      } finally {
+        clearTimeout(timer);
       }
     }
 
-    function render() {
-      // Light
-      setClasses($('lightBtn'), state.light, 'bg-amber-400 hover:bg-amber-300 text-slate-900', NEUTRAL);
-      $('lightLabel').textContent = state.light ? 'On' : 'Off';
-      const glow = $('lightGlow');
-      glow.style.opacity = state.light ? '1' : '0';
-      glow.style.boxShadow = state.light ? '0 0 60px 10px rgba(251,191,36,0.45)' : 'none';
+    // ---------- Gate simulation ----------
+    const gate = { pos: 0, dir: 0 };   // pos: 0 = closed, 1 = open; dir: 1 opening, -1 closing, 0 still
+    let lastFrame = null;
+    const PANEL_TRAVEL = 150;          // SVG units the panel slides when fully open
 
-      // Fan speed buttons
-      document.querySelectorAll('#speedGrid .speed-btn').forEach((btn) => {
-        const active = Number(btn.dataset.speed) === state.speed;
-        setClasses(btn, active, 'bg-sky-500 hover:bg-sky-400 text-white ring-2 ring-sky-300', NEUTRAL);
-      });
+    function renderGate() {
+      $('gatePanel').setAttribute('transform', `translate(${(gate.pos * PANEL_TRAVEL).toFixed(2)} 0)`);
+      const pct = Math.round(gate.pos * 100);
+      $('gatePct').textContent = `${pct}%`;
+      $('gateBar').style.width = `${pct}%`;
 
-      // Fan animation
-      const fan = $('fanIcon');
-      $('fanLabel').textContent = state.speed ? `Speed ${state.speed}` : 'Off';
-      if (state.speed) {
-        fan.style.setProperty('--spin-duration', `${(1.6 / state.speed).toFixed(2)}s`);
-        fan.classList.add('fan-spin');
-        fan.classList.replace('text-slate-400', 'text-sky-400');
-      } else {
-        fan.classList.remove('fan-spin');
-        fan.classList.replace('text-sky-400', 'text-slate-400');
-      }
+      let label;
+      if (gate.dir === 1) label = 'Opening…';
+      else if (gate.dir === -1) label = 'Closing…';
+      else if (gate.pos <= 0) label = 'Closed';
+      else if (gate.pos >= 1) label = 'Open';
+      else label = 'Stopped';
+      $('gateLabel').textContent = label;
+
+      const lamp = $('lamp');
+      lamp.classList.toggle('fill-amber-400', gate.dir !== 0);
+      lamp.classList.toggle('blink', gate.dir !== 0);
+      lamp.classList.toggle('fill-slate-300', gate.dir === 0);
+      lamp.classList.toggle('dark:fill-slate-700', gate.dir === 0);
     }
 
-    document.querySelectorAll('button[data-cmd]').forEach((btn) => {
-      btn.addEventListener('click', async () => {
+    function tick(now) {
+      if (lastFrame === null) lastFrame = now;
+      const dt = now - lastFrame;
+      lastFrame = now;
+      if (gate.dir !== 0) {
+        gate.pos = Math.min(1, Math.max(0, gate.pos + gate.dir * dt / TRAVEL_MS));
+        if ((gate.dir === 1 && gate.pos >= 1) || (gate.dir === -1 && gate.pos <= 0)) gate.dir = 0;
+        renderGate();
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+
+    // Main gate is a single-button cycle: open → pause → close → pause → …
+    // Pedestrian gate ('s') has no position feedback, so it doesn't touch the simulation.
+    let lastDir = -1;                  // last direction moved; next start goes the other way
+    function applyCommand(cmd) {
+      if (cmd !== 'm') return;
+      if (gate.dir !== 0) { lastDir = gate.dir; gate.dir = 0; }
+      else if (gate.pos <= 0) gate.dir = 1;
+      else if (gate.pos >= 1) gate.dir = -1;
+      else gate.dir = -lastDir;
+      renderGate();
+    }
+
+    // ---------- Hold-to-activate buttons ----------
+    function setupHold(btn) {
+      const ring = btn.querySelector('.ring-progress');
+      const hint = btn.querySelector('.hint');
+      const R = 46, C = 2 * Math.PI * R;
+      ring.style.strokeDasharray = `${C}`;
+      ring.style.strokeDashoffset = `${C}`;
+
+      let start = null, raf = null, fired = false;
+
+      const setProgress = (p) => { ring.style.strokeDashoffset = `${C * (1 - p)}`; };
+
+      function frame(now) {
+        const p = Math.min(1, (now - start) / HOLD_MS);
+        setProgress(p);
+        if (p >= 1) return fire();
+        raf = requestAnimationFrame(frame);
+      }
+
+      function begin() {
+        if (start !== null) return;
+        fired = false;
+        ring.classList.remove('reset');
+        hint.textContent = 'Keep holding…';
+        start = performance.now();
+        raf = requestAnimationFrame(frame);
+      }
+
+      async function fire() {
+        fired = true;
+        raf = null;
+        if (navigator.vibrate) navigator.vibrate(40);
+        btn.classList.remove('fired'); void btn.offsetWidth; btn.classList.add('fired');
+        hint.textContent = 'Sent';
         const cmd = btn.dataset.cmd;
-        if (!(await sendCommand(cmd))) return;
-        if (cmd === 'l') state.light = !state.light;
-        else if (cmd === 'o') state.speed = 0;
-        else if (/^[1-6]$/.test(cmd)) state.speed = Number(cmd);
-        render();
-      });
-    });
+        if (await sendCommand(cmd)) applyCommand(cmd);
+        else hint.textContent = 'Failed';
+      }
 
-    render();
+      function end() {
+        if (start === null) return;
+        if (raf) cancelAnimationFrame(raf);
+        raf = null;
+        start = null;
+        ring.classList.add('reset');
+        setProgress(0);
+        if (!fired) hint.textContent = 'Hold';
+        else setTimeout(() => { if (start === null) hint.textContent = 'Hold'; }, 1200);
+      }
+
+      btn.addEventListener('pointerdown', (e) => { e.preventDefault(); begin(); });
+      btn.addEventListener('pointerup', end);
+      btn.addEventListener('pointerleave', end);
+      btn.addEventListener('pointercancel', end);
+      btn.addEventListener('contextmenu', (e) => e.preventDefault());
+      btn.addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); begin(); } });
+      btn.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') end(); });
+      btn.addEventListener('blur', end);
+    }
+
+    document.querySelectorAll('.hold-btn').forEach(setupHold);
+
+    renderGate();
   </script>
 </body>
 </html>

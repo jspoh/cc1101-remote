@@ -11,6 +11,7 @@
 
 
 #include "rx.hpp"
+#include "nice_flor_s.hpp"
 #include <ELECHOUSE_CC1101_SRC_DRV.h>
 #include <algorithm>
 
@@ -76,8 +77,8 @@ uint32_t getMedian(uint32_t arr[], size_t size) {
 
 
 void pulseToBinary(const uint32_t* frame, uint32_t sz, std::bitset<MAX_PULSES>* out, bool* out_drop, uint32_t* out_long_us, uint32_t* out_short_us) {
-  auto isShort = [](uint32_t t) { return t >= 250 && t <= 550; };
-  auto isLong  = [](uint32_t t) { return t >= 850 && t <= 1400; };
+  auto isShort = [](uint32_t t) { return t >= 250 && t <= 600; };
+  auto isLong  = [](uint32_t t) { return t >= 850 && t <= 1600; };
 
   out->reset();
 
@@ -112,15 +113,15 @@ void pulseToBinary(const uint32_t* frame, uint32_t sz, std::bitset<MAX_PULSES>* 
   *out_short_us = sum_short_dur_us / num_short;
 
   // verify packet is valid (no long+long or short+short combos)
-  for (uint32_t i=0; i+1<sz; i+=2) {
-    // first and second bit
-    const bool fbit = (*out)[i];
-    const bool sbit = (*out)[i+1];
-    if (fbit == sbit) {
-      *out_drop = true;
-      return;
-    }
-  }
+  // for (uint32_t i=0; i+1<sz; i+=2) {
+  //   // first and second bit
+  //   const bool fbit = (*out)[i];
+  //   const bool sbit = (*out)[i+1];
+  //   if (fbit == sbit) {
+  //     *out_drop = true;
+  //     return;
+  //   }
+  // }
 
   *out_drop = false;
   return;
@@ -196,6 +197,29 @@ void rxLoop(uint32_t dt_ms) {
       Serial.printf("\"\n}\n");
       Serial.println("```");
       Serial.printf("\n--\n");
+    }
+
+    // --- rolling-code path: try to decode the same frame as Nice Flor-S ---
+    // The raw capture above is per-pulse long/short and can't be replayed for a
+    // rolling remote; this reconstructs serial/counter/button instead.
+    NiceFlorSFrame nfs;
+    if (niceFlorSDecode(rxFrameCopy, n, &nfs)) {
+      if (!niceFlorSHasTable()) {
+        Serial.println("\n[nice_flor_s] frame decoded but SBOX table is empty -> serial/counter are garbage");
+      }
+      // btncode is the 4-bit positional code (1:0x1 2:0x2 3:0x4 4:0x8)
+      Serial.printf("\n-- Nice Flor-S --\n");
+      Serial.println("```json");
+      Serial.printf("{\n"
+        "\t\"name\": \"\",\n"
+        "\t\"type\": \"nice_flor_s\",\n"
+        "\t\"serial\": \"0x%07X\",\n"
+        "\t\"counter\": %u,\n"
+        "\t\"btncode\": \"0x%X\"\n"
+        "}\n",
+        nfs.serial, nfs.counter, nfs.btncode);
+      Serial.println("```");
+      Serial.printf("-- (seed your remote with counter >= %u) --\n", nfs.counter + 1);
     }
   }
 }

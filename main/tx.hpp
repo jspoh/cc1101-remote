@@ -1,15 +1,8 @@
 /**
  * @file tx.hpp
  * @author Poh Jing Seng (hello@jspoh.dev)
- * @brief 
- * @version 0.1
  * @date 2026-09-17
- * 
- * @copyright Copyright (c) 2026
- * 
  */
-
-
 
 #ifndef __TX_HPP__
 #define __TX_HPP__
@@ -17,15 +10,18 @@
 #include "global.h"
 #include <cstdint>
 #include <unordered_map>
+#include <vector>
 #include <string>
 #include <algorithm>
 #include <cstdlib>
 
 
-inline const std::string RAW_TX_CONFIG = 
-// R"(o,1098,376,5938,10010101100101011010101010011001100110011010010110010101101|t,1099,375,5942,10010101100101011010101010011001100110011001010101100110101|1,1102,373,6646,10010101100101011010101010011001100110011010101001100101010|2,1100,375,5927,10010101100101011010101010011001100110011010100101100101011|3,1101,375,6654,10010101100101011010101010011001100110011010011001100101100|4,1099,377,5930,10010101100101011010101010011001100110011010010101100101101|5,1103,373,6631,10010101100101011010101010011001100110011001101001100110010|6,1099,376,5927,10010101100101011010101010011001100110011001100101100110011|w,1096,379,6652,10010101100101011010101010011001100110011010011010010101100|y,1097,378,6649,10010101100101011010101010011001100110011001101010010110010|b,1099,376,5931,10010101100101011010101010011001100110011010100110010101011|-,1098,377,6659,10010101100101011010101010011001100110010110101010011001010|l,1102,373,6660,10010101100101011010101010011001100110010110011010011001100|+,1094,380,6675,10010101100101011010101010011001100110011001011010010110100|)";
+// =========================================================================
+// FIXED-CODE remotes (fans etc.): raw long/short OOK replay. Unchanged.
+// Format per entry:  trigger,long_us,short_us,gap_us,pulse_binary|
+// =========================================================================
+inline const std::string RAW_TX_CONFIG =
 R"(f,1201,397,13000,1010101010101001101010010101010110011001011010100|l,1203,395,13000,1010101010101001101010010101010110011001011001010|o,1200,398,13000,1010101010101001101010010101010110011001011001100|1,1201,396,13000,1010101010101001101010010101010110011001010101100|2,1199,398,13000,1010101010101001101010010101010110011001010110100|3,1198,400,13000,1010101010101001101010010101010110011001011010010|4,1199,398,13000,1010101010101001101010010101010110011001100110010|5,1195,403,13000,1010101010101001101010010101010110011001100101100|6,1201,396,13000,1010101010101001101010010101010110011001100101010|h,1204,394,13000,1010101010101001101010010101010110011001101010010|H,1199,399,13000,1010101010101001101010010101010110011001100110100|c,1201,397,13000,1010101010101001101010010101010110011001101001010|-,1201,397,13000,1010101010101001101010010101010110011001010110010|+,1199,399,13000,1010101010101001101010010101010110011001010101010|)";
-
 
 class TX_DATA {
 public:
@@ -39,13 +35,53 @@ public:
   TX_DATA(char t, uint32_t lpu, uint32_t spu, uint32_t pgu, const std::string& pb) : trigger{t}, long_pulse_us{lpu}, short_pulse_us{spu}, pulse_gap_us{pgu}, pulse_binary{pb} {}
 };
 
-
 extern std::unordered_map<char, TX_DATA> TX_CONFIG;
 
 void initTxConfig();
-
 void txPulses(const char* pulses, uint32_t long_us, uint32_t short_us, uint32_t gap_us, int repeats);
 
+
+// =========================================================================
+// ROLLING-CODE remotes (Nice Flor-S). The counter changes every press, so we
+// store the remote's identity (serial/button/seed counter) and SYNTHESISE a
+// fresh frame each time rather than replaying a capture.
+// Format per entry:  trigger,serial_hex,seed_counter,btncode_hex|
+//   e.g.  g,0436c682,1092,1|
+// btncode is the 4-bit positional code: 1:0x1 2:0x2 3:0x4 4:0x8
+// =========================================================================
+inline const std::string NICE_TX_CONFIG =
+R"(m,347a033,45777,1|s,347a033,45777,2|)";   // filled by pulse_configs/json_to_pulse.py from a nice_flor_s .json
+
+struct NiceRemote {
+  char trigger;
+  uint32_t serial;
+  uint16_t seed_counter;   // starting point; NVS keeps the live value going forward
+  uint8_t btncode;
+};
+
+extern std::vector<NiceRemote> NICE_REMOTES;
+
+void initNiceConfig();
+
+/**
+ * Transmit a full Nice Flor-S press (16 parcels) `bursts` times.
+ * Uses `counter` as-is for this transmission; the caller is responsible for
+ * persisting the next counter (see niceCounterNext).
+ */
+void txNiceFlorS(uint32_t serial, uint16_t counter, uint8_t btncode, int bursts);
+
+/**
+ * Return the counter to use for the next press of `serial`, advancing the
+ * value stored in NVS (flash). First call seeds NVS from `seed` if nothing is
+ * stored.
+ */
+uint16_t niceCounterNext(uint32_t serial, uint16_t seed);
+
+/**
+ * Read the persisted next-counter for `serial` WITHOUT advancing it (returns
+ * `seed` if nothing is stored yet). Used to print live counters on init.
+ */
+uint16_t niceCounterPeek(uint32_t serial, uint16_t seed);
 
 
 #endif
