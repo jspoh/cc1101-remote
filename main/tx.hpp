@@ -62,7 +62,7 @@ R"(m,b2511c9,1,1|s,b2511c9,1,2|)";   // b2511c9 = randomly generated 28-bit seri
 // (re-sniff the fob with pulse_configs/nice_flor_s_decode.py and bump this if Method A
 // fails). Method B avoids this entirely by using the physical fob live.
 static constexpr uint32_t NICE_AUTH_SERIAL = 0x347A033;
-static constexpr uint16_t NICE_AUTH_SEED   = 45997;
+static constexpr uint16_t NICE_AUTH_SEED   = 46015;
 
 struct NiceRemote {
   char trigger;

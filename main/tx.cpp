@@ -228,13 +228,13 @@ void niceEnrollAuto(const NiceRemote& fresh) {
   for (int k = 0; k < 3; ++k) {
     const uint16_t co = niceCounterNext(NICE_AUTH_SERIAL, NICE_AUTH_SEED);
     Serial.printf("  OLD press %d serial=0x%07X counter=%u\n", k + 1, (uint32_t)NICE_AUTH_SERIAL, co);
-    txNiceFlorS(NICE_AUTH_SERIAL, co, fresh.btncode, 1);
+    txNiceFlorS(NICE_AUTH_SERIAL, co, fresh.btncode, 2);   // 2 bursts x 4 parcels = 8 per press (bad-link margin)
     delay(600);
   }
 
   Serial.println("[enroll A] step3: NEW once (confirm)");
   const uint16_t c3 = niceCounterNext(fresh.serial, fresh.seed_counter);
-  txNiceFlorS(fresh.serial, c3, fresh.btncode, 1);
+  txNiceFlorS(fresh.serial, c3, fresh.btncode, 2);   // 2 bursts x 4 parcels = 8 per press (bad-link margin)
 
   Serial.println("[enroll A] sent. Watch the receiver LED for 3 slow flashes = learned.");
 }
