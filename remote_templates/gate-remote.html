@@ -23,8 +23,6 @@
     .ring-progress.reset { transition: stroke-dashoffset 250ms ease-out; }
     @keyframes fired { 0% { transform: scale(1); } 40% { transform: scale(1.08); } 100% { transform: scale(1); } }
     .fired { animation: fired 350ms ease-out; }
-    @keyframes blink { 50% { opacity: 0.25; } }
-    .blink { animation: blink 0.8s step-end infinite; }
   </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-slate-100 via-white to-slate-200 text-slate-900 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 dark:text-slate-100 flex items-center justify-center p-4 select-none transition-colors">
@@ -64,9 +62,9 @@
         </defs>
         <!-- ground / track -->
         <rect x="0" y="78" width="200" height="3" rx="1.5" class="fill-slate-300 dark:fill-slate-700" />
-        <!-- sliding panel -->
+        <!-- panel (static illustration: there's no gate sensor, so the real state is unknown) -->
         <g clip-path="url(#gateClip)">
-          <g id="gatePanel">
+          <g>
             <rect x="20" y="22" width="160" height="4" class="fill-slate-500 dark:fill-slate-400" />
             <rect x="20" y="70" width="160" height="4" class="fill-slate-500 dark:fill-slate-400" />
             <g class="fill-slate-500 dark:fill-slate-400">
@@ -84,18 +82,9 @@
         <!-- pillars -->
         <rect x="8" y="12" width="12" height="67" rx="2" class="fill-slate-400 dark:fill-slate-600" />
         <rect x="180" y="12" width="12" height="67" rx="2" class="fill-slate-400 dark:fill-slate-600" />
-        <!-- warning lamp -->
-        <circle id="lamp" cx="186" cy="8" r="4" class="fill-slate-300 dark:fill-slate-700" />
       </svg>
 
-      <div class="mt-3 flex items-center justify-between text-sm">
-        <span>Main gate: <span id="gateLabel" class="font-semibold">Closed</span></span>
-        <span id="gatePct" class="font-mono text-slate-500 dark:text-slate-400">0%</span>
-      </div>
-      <div class="mt-2 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-        <div id="gateBar" class="h-full w-0 bg-sky-500"></div>
-      </div>
-      <p class="mt-2 text-[11px] text-slate-400 dark:text-slate-500">Position is estimated from the commands sent. There's no gate sensor.</p>
+      <p class="mt-2 text-[11px] text-slate-400 dark:text-slate-500">There's no gate sensor, so the gate's state isn't shown. Check the gate itself.</p>
     </section>
 
     <!-- Hold buttons -->
@@ -174,8 +163,9 @@
     const PORT = 2926;
     const HOST = window.location.hostname || 'localhost';
     const BASE_URL = `http://${HOST}:${PORT}`;
-    const HOLD_MS = 1000;          // how long a button must be held
-    const TRAVEL_MS = 15000;       // estimated full open/close time — adjust to match the real gate
+    const HOLD_MS = 1000;          // hold this long to send the FIRST press (debounce / accidental-guard)
+    const FIRST_REPEAT_MS = 800;   // gap between the 1st press and the 2nd (longer: grace before it starts spamming)
+    const REPEAT_MS = 250;         // gap between every press after that (shorter: steady weak-link spam)
     const REQUEST_TIMEOUT_MS = 4000;
 
     const $ = (id) => document.getElementById(id);
@@ -207,57 +197,6 @@
       }
     }
 
-    // ---------- Gate simulation ----------
-    const gate = { pos: 0, dir: 0 };   // pos: 0 = closed, 1 = open; dir: 1 opening, -1 closing, 0 still
-    let lastFrame = null;
-    const PANEL_TRAVEL = 150;          // SVG units the panel slides when fully open
-
-    function renderGate() {
-      $('gatePanel').setAttribute('transform', `translate(${(gate.pos * PANEL_TRAVEL).toFixed(2)} 0)`);
-      const pct = Math.round(gate.pos * 100);
-      $('gatePct').textContent = `${pct}%`;
-      $('gateBar').style.width = `${pct}%`;
-
-      let label;
-      if (gate.dir === 1) label = 'Opening…';
-      else if (gate.dir === -1) label = 'Closing…';
-      else if (gate.pos <= 0) label = 'Closed';
-      else if (gate.pos >= 1) label = 'Open';
-      else label = 'Stopped';
-      $('gateLabel').textContent = label;
-
-      const lamp = $('lamp');
-      lamp.classList.toggle('fill-amber-400', gate.dir !== 0);
-      lamp.classList.toggle('blink', gate.dir !== 0);
-      lamp.classList.toggle('fill-slate-300', gate.dir === 0);
-      lamp.classList.toggle('dark:fill-slate-700', gate.dir === 0);
-    }
-
-    function tick(now) {
-      if (lastFrame === null) lastFrame = now;
-      const dt = now - lastFrame;
-      lastFrame = now;
-      if (gate.dir !== 0) {
-        gate.pos = Math.min(1, Math.max(0, gate.pos + gate.dir * dt / TRAVEL_MS));
-        if ((gate.dir === 1 && gate.pos >= 1) || (gate.dir === -1 && gate.pos <= 0)) gate.dir = 0;
-        renderGate();
-      }
-      requestAnimationFrame(tick);
-    }
-    requestAnimationFrame(tick);
-
-    // Main gate is a single-button cycle: open → pause → close → pause → …
-    // Pedestrian gate ('s') has no position feedback, so it doesn't touch the simulation.
-    let lastDir = -1;                  // last direction moved; next start goes the other way
-    function applyCommand(cmd) {
-      if (cmd !== 'm') return;
-      if (gate.dir !== 0) { lastDir = gate.dir; gate.dir = 0; }
-      else if (gate.pos <= 0) gate.dir = 1;
-      else if (gate.pos >= 1) gate.dir = -1;
-      else gate.dir = -lastDir;
-      renderGate();
-    }
-
     // ---------- Hold-to-activate buttons ----------
     function setupHold(btn) {
       const ring = btn.querySelector('.ring-progress');
@@ -266,14 +205,14 @@
       ring.style.strokeDasharray = `${C}`;
       ring.style.strokeDashoffset = `${C}`;
 
-      let start = null, raf = null, fired = false;
+      let start = null, raf = null, fired = false, repeatTimer = null;
 
       const setProgress = (p) => { ring.style.strokeDashoffset = `${C * (1 - p)}`; };
 
       function frame(now) {
         const p = Math.min(1, (now - start) / HOLD_MS);
         setProgress(p);
-        if (p >= 1) return fire();
+        if (p >= 1) return fire(true);   // debounce elapsed -> the single first press
         raf = requestAnimationFrame(frame);
       }
 
@@ -286,21 +225,32 @@
         raf = requestAnimationFrame(frame);
       }
 
-      async function fire() {
+      // first === true: the single debounced press (buzz once).
+      // While the button stays held, each call re-queues the next resend REPEAT_MS
+      // later, so a weak/intermittent link gets many chances to catch a frame.
+      async function fire(first) {
         fired = true;
         raf = null;
-        if (navigator.vibrate) navigator.vibrate(40);
-        btn.classList.remove('fired'); void btn.offsetWidth; btn.classList.add('fired');
-        hint.textContent = 'Sent';
+        if (first) {
+          if (navigator.vibrate) navigator.vibrate(40);
+          btn.classList.remove('fired'); void btn.offsetWidth; btn.classList.add('fired');
+          hint.textContent = 'Sent';
+        }
         const cmd = btn.dataset.cmd;
-        if (await sendCommand(cmd)) applyCommand(cmd);
-        else hint.textContent = 'Failed';
+        const ok = await sendCommand(cmd);
+        if (!ok && first) hint.textContent = 'Failed';
+        if (start !== null) {                        // still held -> keep sending
+          hint.textContent = 'Repeating…';
+          const nextDelay = first ? FIRST_REPEAT_MS : REPEAT_MS;   // long gap after the 1st, short thereafter
+          repeatTimer = setTimeout(() => fire(false), nextDelay);
+        }
       }
 
       function end() {
         if (start === null) return;
         if (raf) cancelAnimationFrame(raf);
         raf = null;
+        if (repeatTimer) { clearTimeout(repeatTimer); repeatTimer = null; }
         start = null;
         ring.classList.add('reset');
         setProgress(0);
@@ -319,8 +269,6 @@
     }
 
     document.querySelectorAll('.hold-btn').forEach(setupHold);
-
-    renderGate();
   </script>
 </body>
 </html>

@@ -63,14 +63,12 @@ void setup() {
 
 #ifdef TX_ONLY
   pinMode(CC1101_GDO0, OUTPUT);
+  digitalWrite(CC1101_GDO0, LOW);
 
+  // Stay IDLE until an actual transmit. Leaving the chip keyed in TX (as before)
+  // parks the radio transmitting 24/7 and jams nearby 433 MHz receivers. Each send
+  // now enters TX via txRadioBegin() and returns here via txRadioEnd() -> SIDLE.
   ELECHOUSE_cc1101.SpiStrobe(CC1101_SIDLE);
-  delay(1);   // let chip finish leaving Rx
-  ELECHOUSE_cc1101.SpiStrobe(CC1101_STX);
-
-  ELECHOUSE_cc1101.SetTx();
-
-  delay(2);   // let the chip calibrate before the first pulse
 #else
   rxSetup();
 #endif
@@ -136,20 +134,23 @@ void loop() {
   }
 
   // Nice Flor-S enrollment / hold commands (ADD the ESP32 as a new remote; see usage.md).
-  //   z = 5s hold of NEW serial   e = Method A (auto)   B = Method B (fob-assisted)
-  if (serial_ipt == 'z' || serial_ipt == 'e' || serial_ipt == 'B') {
+  //   z = 5s hold of NEW serial   e = Method A main gate   E = Method A side gate   B = Method B side gate (fob-assisted)
+  // This receiver learns per-BUTTON, not per-serial, so each gate must be enrolled
+  // separately: 'e' authorises with btn 0x1 (main), 'E'/'B' with btn 0x2 (side).
+  if (serial_ipt == 'z' || serial_ipt == 'e' || serial_ipt == 'E' || serial_ipt == 'B') {
+    const char want = (serial_ipt == 'E' || serial_ipt == 'B') ? 's' : 'm';   // E, B = side gate; else main
     const NiceRemote* fresh = nullptr;
     for (const auto& r : NICE_REMOTES) {
-      if (r.trigger == 'm') { fresh = &r; break; }   // 'm' = the ESP32's new remote, main gate
+      if (r.trigger == want) { fresh = &r; break; }
     }
     if (!fresh) {
-      Serial.println("[enroll] no 'm' (new remote) entry in NICE_TX_CONFIG");
+      Serial.printf("[enroll] no '%c' remote entry in NICE_TX_CONFIG\n", want);
     } else if (serial_ipt == 'z') {
       const uint16_t c = niceCounterNext(fresh->serial, fresh->seed_counter);
       Serial.printf("[hold] NEW serial=0x%07X counter=%u btn=0x%X ~6s\n", fresh->serial, c, fresh->btncode);
       txNiceFlorSHold(fresh->serial, c, fresh->btncode, 6000);
       Serial.println("[hold] done");
-    } else if (serial_ipt == 'e') {
+    } else if (serial_ipt == 'e' || serial_ipt == 'E') {
       niceEnrollAuto(*fresh);
     } else if (serial_ipt == 'B') {
       niceEnrollFob(*fresh);

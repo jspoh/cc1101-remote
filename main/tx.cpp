@@ -97,14 +97,14 @@ static void txRadioBegin() {
 static void txRadioEnd() {
 #ifndef TX_ONLY
   rxSetup();
+#else
+  ELECHOUSE_cc1101.SpiStrobe(CC1101_SIDLE);   // don't sit keyed in TX: idle the radio between sends
 #endif
 }
 
 
 void txPulses(const char* pulses, uint32_t long_us, uint32_t short_us, uint32_t gap_us, int repeats) {
-#ifndef TX_ONLY
-  txRadioBegin();
-#endif
+  txRadioBegin();   // enters TX; paired with txRadioEnd() which idles the radio afterward
 
   Serial.printf("MARCSTATE: %u\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_MARCSTATE) & 0x1F);
 
@@ -122,9 +122,7 @@ void txPulses(const char* pulses, uint32_t long_us, uint32_t short_us, uint32_t 
     delayMicroseconds(gap_us);
   }
 
-#ifndef TX_ONLY
-  txRadioEnd();
-#endif
+  txRadioEnd();     // back to SIDLE (TX_ONLY) or RX (rx build) so we're not left transmitting
 }
 
 
@@ -136,8 +134,9 @@ uint16_t niceCounterNext(uint32_t serial, uint16_t seed) {
   snprintf(key, sizeof(key), "%08X", serial);   // per-serial NVS key
 
   niceCounterStore.begin(NICE_NVS_NAMESPACE, false);   // read/write
-  uint16_t cur = niceCounterStore.getUShort(key, 0xFFFF);
-  if (cur == 0xFFFF) cur = seed;                        // first ever use -> seed
+  uint16_t stored = niceCounterStore.getUShort(key, 0xFFFF);
+  uint16_t cur = (stored == 0xFFFF) ? seed : stored;   // first ever use -> seed
+  if (seed > cur) cur = seed;   // seed wins if bumped above flash (e.g. re-sniff to fix desync)
   uint16_t next = (uint16_t)(cur + 1);                  // wraps naturally at 0x10000
   niceCounterStore.putUShort(key, next);
   niceCounterStore.end();
@@ -170,9 +169,7 @@ void txNiceFlorS(uint32_t serial, uint16_t counter, uint8_t btncode, int bursts)
     Serial.println("[nice_flor_s] warning: SBOX table empty, transmitting garbage");
   }
 
-#ifndef TX_ONLY
-  txRadioBegin();
-#endif
+  txRadioBegin();   // enters TX; paired with txRadioEnd() which idles the radio afterward
 
   Serial.printf("MARCSTATE: %u\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_MARCSTATE) & 0x1F);
 
@@ -184,9 +181,7 @@ void txNiceFlorS(uint32_t serial, uint16_t counter, uint8_t btncode, int bursts)
   }
   digitalWrite(CC1101_GDO0, LOW);   // leave carrier off
 
-#ifndef TX_ONLY
-  txRadioEnd();
-#endif
+  txRadioEnd();     // back to SIDLE (TX_ONLY) or RX (rx build) so we're not left transmitting
 }
 
 
@@ -208,9 +203,7 @@ void txNiceFlorSHold(uint32_t serial, uint16_t counter, uint8_t btncode, uint32_
     Serial.println("[nice_flor_s] warning: SBOX table empty, transmitting garbage");
   }
 
-#ifndef TX_ONLY
-  txRadioBegin();
-#endif
+  txRadioBegin();   // enters TX; paired with txRadioEnd() which idles the radio afterward
   const uint32_t start = millis();
   do {
     for (size_t i = 0; i < count; ++i) {
@@ -219,9 +212,7 @@ void txNiceFlorSHold(uint32_t serial, uint16_t counter, uint8_t btncode, uint32_
     }
   } while ((uint32_t)(millis() - start) < hold_ms);
   digitalWrite(CC1101_GDO0, LOW);
-#ifndef TX_ONLY
-  txRadioEnd();
-#endif
+  txRadioEnd();     // back to SIDLE (TX_ONLY) or RX (rx build) so we're not left transmitting
 }
 
 // METHOD A: ESP32 does the whole sequence, using the old serial as authoriser.
@@ -257,6 +248,7 @@ void niceEnrollFob(const NiceRemote& fresh) {
   txNiceFlorSHold(fresh.serial, c1, fresh.btncode, 6000);
 
   Serial.println("[enroll B] Now press your OLD fob 3x, then send any key to confirm...");
+  while (Serial.read() >= 0) { /* drain leftover input (e.g. the newline after 'B') */ }
   while (Serial.read() < 0) { delay(10); }
 
   Serial.println("[enroll B] step3: NEW once (confirm)");

@@ -19,6 +19,10 @@ WebServer webui_server(WEBUI_PORT);
 
 
 void setupRoutes() {
+#ifdef DISABLE_WIFI
+  return;
+#endif
+
   server.on("/tx", HTTP_GET, [](){
     bool success = false;
     String cmdStr = server.arg("cmd");
@@ -58,15 +62,17 @@ void setupRoutes() {
 
 
 void wifiSetup() {
+#ifdef DISABLE_WIFI
+  return;
+#endif
+
   Serial.printf("Connecting to WiFi network %s\n", WIFI_SSID);
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);   // disable modem power-save: cuts response latency, stops stalls
   for (int i=0; i<MAX_WIFI_CONN_RETRIES; ++i) {
     Serial.printf("Attempt %d/%d | %d\n", i+1, MAX_WIFI_CONN_RETRIES, WiFi.status());
 
-    // 8.5 dBm was far too low: tiny packets (ping, /tx) get through but the ~12 KB
-    // page can't finish over a lossy link. 17 dBm is a solid default.
-    WiFi.setTxPower(WIFI_POWER_17dBm);
+    WiFi.setTxPower(WIFI_POWER_7dBm);
 
     WiFi.disconnect(true);
     delay(100);
@@ -109,6 +115,10 @@ void wifiSetup() {
 
 
 void wifiEventHandler() {
+#ifdef DISABLE_WIFI
+  return;
+#endif
+
   server.handleClient();
   webui_server.handleClient();
 }

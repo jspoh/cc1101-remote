@@ -1,0 +1,6 @@
+m
+Tx Nice Flor-S m: serial=0xB2511C9 counter=13 btncode=0x1
+MARCSTATE: 19
+Tx Nice Flor-S m completed
+
+works

@@ -50,7 +50,7 @@ static constexpr uint32_t NFS_TE_DELTA = 300;   // per-symbol timing tolerance
 static constexpr uint32_t NFS_HEADER_MULT = 37; // header LOW = 37 * TE_SHORT
 static constexpr uint32_t NFS_MARK_MULT   = 3;  // start/stop marks = 3 * TE_SHORT
 static constexpr uint32_t NFS_DATA_BITS   = 52; // fixed Flor-S frame length
-static constexpr int      NFS_PARCELS     = 16; // parcels per full transmission
+static constexpr int      NFS_PARCELS     = 4;  // parcels per full transmission (was 16; 4 = ~400ms/press for faster repeats)
 
 // 0xFFFF = plain Nice Flor-S (no installer code / O-Code).
 static constexpr uint16_t NFS_IC_PLAIN = 0xFFFFu;

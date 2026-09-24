@@ -25,6 +25,8 @@
 #define SERVER_PORT 2926
 #define WEBUI_PORT 80
 
+#define DISABLE_WIFI
+
 
 extern WebServer server;
 
@@ -211,7 +213,9 @@ const std::string WEBUI_TEMPLATE = R"HTML(<!DOCTYPE html>
     const PORT = 2926;
     const HOST = window.location.hostname || 'localhost';
     const BASE_URL = `http://${HOST}:${PORT}`;
-    const HOLD_MS = 1000;          // how long a button must be held
+    const HOLD_MS = 1000;          // hold this long to send the FIRST press (debounce / accidental-guard)
+    const FIRST_REPEAT_MS = 800;   // gap between the 1st press and the 2nd (longer: grace before it starts spamming)
+    const REPEAT_MS = 250;         // gap between every press after that (shorter: steady weak-link spam)
     const TRAVEL_MS = 15000;       // estimated full open/close time — adjust to match the real gate
     const REQUEST_TIMEOUT_MS = 4000;
 
@@ -303,14 +307,14 @@ const std::string WEBUI_TEMPLATE = R"HTML(<!DOCTYPE html>
       ring.style.strokeDasharray = `${C}`;
       ring.style.strokeDashoffset = `${C}`;
 
-      let start = null, raf = null, fired = false;
+      let start = null, raf = null, fired = false, repeatTimer = null;
 
       const setProgress = (p) => { ring.style.strokeDashoffset = `${C * (1 - p)}`; };
 
       function frame(now) {
         const p = Math.min(1, (now - start) / HOLD_MS);
         setProgress(p);
-        if (p >= 1) return fire();
+        if (p >= 1) return fire(true);   // debounce elapsed -> the single first press
         raf = requestAnimationFrame(frame);
       }
 
@@ -323,21 +327,33 @@ const std::string WEBUI_TEMPLATE = R"HTML(<!DOCTYPE html>
         raf = requestAnimationFrame(frame);
       }
 
-      async function fire() {
+      // first === true: the single debounced press (buzz + sim update once).
+      // While the button stays held, each call re-queues the next resend REPEAT_MS
+      // later, so a weak/intermittent link gets many chances to catch a frame.
+      async function fire(first) {
         fired = true;
         raf = null;
-        if (navigator.vibrate) navigator.vibrate(40);
-        btn.classList.remove('fired'); void btn.offsetWidth; btn.classList.add('fired');
-        hint.textContent = 'Sent';
+        if (first) {
+          if (navigator.vibrate) navigator.vibrate(40);
+          btn.classList.remove('fired'); void btn.offsetWidth; btn.classList.add('fired');
+          hint.textContent = 'Sent';
+        }
         const cmd = btn.dataset.cmd;
-        if (await sendCommand(cmd)) applyCommand(cmd);
-        else hint.textContent = 'Failed';
+        const ok = await sendCommand(cmd);
+        if (ok && first) applyCommand(cmd);          // advance the sim once, not per repeat
+        else if (!ok && first) hint.textContent = 'Failed';
+        if (start !== null) {                        // still held -> keep sending
+          hint.textContent = 'Repeating…';
+          const nextDelay = first ? FIRST_REPEAT_MS : REPEAT_MS;   // long gap after the 1st, short thereafter
+          repeatTimer = setTimeout(() => fire(false), nextDelay);
+        }
       }
 
       function end() {
         if (start === null) return;
         if (raf) cancelAnimationFrame(raf);
         raf = null;
+        if (repeatTimer) { clearTimeout(repeatTimer); repeatTimer = null; }
         start = null;
         ring.classList.add('reset');
         setProgress(0);
