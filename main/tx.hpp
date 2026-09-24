@@ -49,8 +49,19 @@ void txPulses(const char* pulses, uint32_t long_us, uint32_t short_us, uint32_t 
 //   e.g.  g,0436c682,1092,1|
 // btncode is the 4-bit positional code: 1:0x1 2:0x2 3:0x4 4:0x8
 // =========================================================================
+// The ESP32's OWN remote (a fresh serial we ADD to the gate; we never clone the
+// physical fob 0x347A033 for daily use -- see nice_flor_s.md / plan.txt).
+//   m -> main gate (btn 0x1),  s -> side gate (btn 0x2)
 inline const std::string NICE_TX_CONFIG =
-R"(m,347a033,45777,1|s,347a033,45777,2|)";   // filled by pulse_configs/json_to_pulse.py from a nice_flor_s .json
+R"(m,b2511c9,1,1|s,b2511c9,1,2|)";   // b2511c9 = randomly generated 28-bit serial (!= 0x347A033)
+
+// Authoriser for Method A (auto enroll): the physical fob's serial + a seed counter.
+// Used ONLY inside the one-time enrollment; never for opening the gate. NOTE the seed
+// must sit ABOVE the fob's current high-water-mark counter or the receiver rejects it
+// (re-sniff the fob with pulse_configs/nice_flor_s_decode.py and bump this if Method A
+// fails). Method B avoids this entirely by using the physical fob live.
+static constexpr uint32_t NICE_AUTH_SERIAL = 0x347A033;
+static constexpr uint16_t NICE_AUTH_SEED   = 45777;
 
 struct NiceRemote {
   char trigger;
@@ -69,6 +80,27 @@ void initNiceConfig();
  * persisting the next counter (see niceCounterNext).
  */
 void txNiceFlorS(uint32_t serial, uint16_t counter, uint8_t btncode, int bursts);
+
+/**
+ * "Hold the button" for ~hold_ms: retransmit the same Flor-S frame at a FIXED
+ * counter continuously. This is Step 1 of the Nice remote-enrollment (a held
+ * remote does not advance its counter). Caller advances NVS separately.
+ */
+void txNiceFlorSHold(uint32_t serial, uint16_t counter, uint8_t btncode, uint32_t hold_ms);
+
+/**
+ * METHOD A -- auto enroll (no physical fob). The ESP32 plays both roles:
+ *   Step1 hold NEW ~6s -> Step2 send OLD (NICE_AUTH_SERIAL) x3 -> Step3 NEW once.
+ * Works only if NICE_AUTH_SEED is above the fob's current counter (see note above).
+ */
+void niceEnrollAuto(const NiceRemote& fresh);
+
+/**
+ * METHOD B -- fob-assisted enroll. Step1 hold NEW ~6s, then prompt and WAIT for a
+ * serial byte while the operator presses the physical fob 3x, then Step3 NEW once.
+ * Never transmits the old serial -> zero counter contention with the fob.
+ */
+void niceEnrollFob(const NiceRemote& fresh);
 
 /**
  * Return the counter to use for the next press of `serial`, advancing the

@@ -135,5 +135,26 @@ void loop() {
     }
   }
 
+  // Nice Flor-S enrollment / hold commands (ADD the ESP32 as a new remote; see usage.md).
+  //   z = 5s hold of NEW serial   e = Method A (auto)   B = Method B (fob-assisted)
+  if (serial_ipt == 'z' || serial_ipt == 'e' || serial_ipt == 'B') {
+    const NiceRemote* fresh = nullptr;
+    for (const auto& r : NICE_REMOTES) {
+      if (r.trigger == 'm') { fresh = &r; break; }   // 'm' = the ESP32's new remote, main gate
+    }
+    if (!fresh) {
+      Serial.println("[enroll] no 'm' (new remote) entry in NICE_TX_CONFIG");
+    } else if (serial_ipt == 'z') {
+      const uint16_t c = niceCounterNext(fresh->serial, fresh->seed_counter);
+      Serial.printf("[hold] NEW serial=0x%07X counter=%u btn=0x%X ~6s\n", fresh->serial, c, fresh->btncode);
+      txNiceFlorSHold(fresh->serial, c, fresh->btncode, 6000);
+      Serial.println("[hold] done");
+    } else if (serial_ipt == 'e') {
+      niceEnrollAuto(*fresh);
+    } else if (serial_ipt == 'B') {
+      niceEnrollFob(*fresh);
+    }
+  }
+
   wifiEventHandler();
 }

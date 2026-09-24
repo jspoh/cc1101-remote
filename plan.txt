@@ -1,0 +1,104 @@
+================================================================================
+PLAN: ESP32 as its own Nice Flor-S remote — ADD (not clone), two enroll methods
+================================================================================
+Audience: the next coding agent. Rationale in nice_flor_s.md; operator steps in usage.md;
+current state + next steps in HANDOFF.md.
+STATUS: IMPLEMENTED in firmware (2026-09-24). Not yet compiled/flashed/tested on hardware.
+
+--------------------------------------------------------------------------------
+0. GOAL
+--------------------------------------------------------------------------------
+The ESP32 is its OWN Nice Flor-S remote: distinct serial 0xB2511C9, its OWN rolling
+counter. Two enrollment methods so the owner can pick at the gate:
+  METHOD A ('e'): ESP32 does the whole enroll itself, using old serial 0x347A033 as the
+     authoriser. No physical fob needed.
+  METHOD B ('B'): ESP32 sends the NEW code; owner presses the PHYSICAL fob 3x for step 2.
+     Never disturbs the fob's counter -> most reliable.
+
+--------------------------------------------------------------------------------
+1. WHY ADD, NOT CLONE
+--------------------------------------------------------------------------------
+Cloning reuses 0x347A033 AND its rolling counter. The receiver tracks one high-water-mark
+counter R per serial (C<=R rejected; R<C<=R+window accepted, R:=C). ESP32 presses push R
+forward; unplug the ESP32 and the physical fob is left <= R -> rejected -> fob breaks. A
+distinct serial = independent R = fob and ESP32 coexist.
+
+--------------------------------------------------------------------------------
+2. NICE ENROLL SEQUENCE (manual "method 3", flor-s-programming-instructions.pdf p.5-6)
+   Run IN RF RANGE of the gate. Receiver LED flashes 3x slowly = learned.
+--------------------------------------------------------------------------------
+  Step 1: transmit NEW code HELD >=5 s      (FIXED counter -- a held remote doesn't increment)
+  Step 2: transmit OLD code 3x              (3 DISTINCT presses, counter advancing)
+  Step 3: transmit NEW code once to confirm
+"any key" authorises the SERIAL -> one enroll should cover both buttons (0x1 main, 0x2 side).
+
+--------------------------------------------------------------------------------
+3. WHAT WAS IMPLEMENTED
+--------------------------------------------------------------------------------
+main/tx.hpp:
+  - NICE_TX_CONFIG = "m,b2511c9,1,1|s,b2511c9,1,2|"  (NEW serial only; old clone entries removed)
+  - static constexpr NICE_AUTH_SERIAL = 0x347A033;  NICE_AUTH_SEED = 45777;  (Method A authoriser)
+  - decls: txNiceFlorSHold(), niceEnrollAuto(), niceEnrollFob()
+
+main/tx.cpp (appended):
+  - txNiceFlorSHold(serial,counter,btncode,hold_ms): re-sends the SAME frame at a FIXED
+    counter until millis() elapsed >= hold_ms (Step 1). Reuses niceFlorSBuildUpload +
+    txRadioBegin/End. Buffers sized 1728 (== niceFlorSUploadMax()).
+  - niceEnrollAuto(fresh) = METHOD A: c1=niceCounterNext(NEW); hold(NEW,c1,6000);
+      3x { co=niceCounterNext(NICE_AUTH_SERIAL,NICE_AUTH_SEED); txNiceFlorS(AUTH,co,btn,1); delay(600); }
+      c3=niceCounterNext(NEW); txNiceFlorS(NEW,c3,btn,1).
+  - niceEnrollFob(fresh) = METHOD B: hold(NEW,c1,6000); prompt; wait for a Serial byte
+      (owner presses fob 3x); c3=niceCounterNext(NEW); txNiceFlorS(NEW,c3,btn,1).
+
+main/main.ino loop() dispatch (after the NICE_REMOTES open-loop):
+  - finds the 'm' remote (NEW), then:
+      'z' -> txNiceFlorSHold(NEW,niceCounterNext(NEW),0x1,6000)   (standalone 5s hold)
+      'e' -> niceEnrollAuto(fresh)
+      'B' -> niceEnrollFob(fresh)
+  - 'm'/'s' daily opens already handled by the existing generic NICE_REMOTES loop.
+
+COMMAND SUMMARY:  m,s = open main/side (NEW).  z = 5s hold.  e = Method A.  B = Method B.
+
+TRIGGER-COLLISION NOTE: RAW_TX_CONFIG (fans) already uses f,l,o,1-6,h,H,c,-,+ ; 'd' is a
+hardcoded debug key; do NOT reuse those. m,s were freed by deleting the old clone entries.
+Chosen command chars z,e,B avoid all collisions.
+
+--------------------------------------------------------------------------------
+4. COUNTER HANDLING (kept clean automatically)
+--------------------------------------------------------------------------------
+z/e/B/m/s all pull counters via niceCounterNext(NEW,seed), which advances NVS, so the first
+real 'm' press continues past the enroll frames (no replay). Method A's OLD presses use
+niceCounterNext(NICE_AUTH_SERIAL,NICE_AUTH_SEED): they must land ABOVE the fob's current
+high-water mark R -> if the fob has been used a lot since capture (last seen 45774), bump
+NICE_AUTH_SEED above its current counter (re-sniff with pulse_configs/nice_flor_s_decode.py)
+or just use Method B.
+
+--------------------------------------------------------------------------------
+5. VERIFICATION (owner, at the gate; arduino-cli not present in the dev sandbox)
+--------------------------------------------------------------------------------
+1. `make build` compiles (needs esp32 core + ELECHOUSE_CC1101 lib on the owner's machine).
+2. `make upload && make monitor`; boot dump lists the NEW remote at next_counter=1.
+3. Enroll: send 'e' (Method A) OR 'B' (Method B; press fob 3x, then any key). Watch receiver
+   LED for 3 slow flashes.
+4. 'm' opens main; 's' opens side. If only one button works, re-enroll for the other.
+5. CRITICAL regression: disable the ESP32, press the PHYSICAL fob -> must still open (fob
+   counter intact). Power-cycle ESP32 -> 'm'/'s' still work (NVS counter persisted).
+
+--------------------------------------------------------------------------------
+6. RISKS / FALLBACKS
+--------------------------------------------------------------------------------
+- OTA learning locked out ("2nd learning disable", PDF): BOTH RF methods fail (no 3 flashes).
+  Fallback: enroll the SAME serial once at the receiver card (manual method 1/2) -> physical
+  board access ONCE, no reflash. Go prepared to open the receiver cover.
+- Method A rejected at Step 2: old counter <= fob's R. Fix per sec 4, or use Method B.
+- Stray transmitters during enroll: LED flash 8 = "different codes received"; redo.
+- Timing flaky: raise hold to ~8 s (hold_ms=8000) / widen the 600ms inter-press gap.
+
+--------------------------------------------------------------------------------
+7. DO / DON'T
+--------------------------------------------------------------------------------
+DO   : open day-to-day only with 'm'/'s' (NEW serial).
+DO   : prefer Method B when convenient (never disturbs the fob).
+DON'T: transmit/clone 0x347A033 for daily opens.
+DON'T: erase NVS after enrollment (loses NEW serial's counter).
+DON'T: pick a NEW serial equal to 0x347A033.

@@ -188,3 +188,80 @@ void txNiceFlorS(uint32_t serial, uint16_t counter, uint8_t btncode, int bursts)
   txRadioEnd();
 #endif
 }
+
+
+// -------------------------------------------------------------------------
+// Nice Flor-S enrollment (ADD a new remote) -- see nice_flor_s.md / plan.txt
+// -------------------------------------------------------------------------
+
+// Step 1 building block: "hold the button" ~hold_ms at a FIXED counter.
+void txNiceFlorSHold(uint32_t serial, uint16_t counter, uint8_t btncode, uint32_t hold_ms) {
+  static bool     levels[1728];   // == niceFlorSUploadMax()
+  static uint32_t durs[1728];
+
+  const size_t count = niceFlorSBuildUpload(serial, counter, btncode, levels, durs, sizeof(durs) / sizeof(durs[0]));
+  if (count == 0) {
+    Serial.println("[nice_flor_s] hold: upload buffer too small, aborting");
+    return;
+  }
+  if (!niceFlorSHasTable()) {
+    Serial.println("[nice_flor_s] warning: SBOX table empty, transmitting garbage");
+  }
+
+#ifndef TX_ONLY
+  txRadioBegin();
+#endif
+  const uint32_t start = millis();
+  do {
+    for (size_t i = 0; i < count; ++i) {
+      digitalWrite(CC1101_GDO0, levels[i] ? HIGH : LOW);
+      delayMicroseconds(durs[i]);
+    }
+  } while ((uint32_t)(millis() - start) < hold_ms);
+  digitalWrite(CC1101_GDO0, LOW);
+#ifndef TX_ONLY
+  txRadioEnd();
+#endif
+}
+
+// METHOD A: ESP32 does the whole sequence, using the old serial as authoriser.
+void niceEnrollAuto(const NiceRemote& fresh) {
+  Serial.printf("[enroll A] NEW serial=0x%07X btn=0x%X  OLD(auth) serial=0x%07X\n",
+                fresh.serial, fresh.btncode, (uint32_t)NICE_AUTH_SERIAL);
+
+  Serial.println("[enroll A] step1: hold NEW ~6s");
+  const uint16_t c1 = niceCounterNext(fresh.serial, fresh.seed_counter);
+  txNiceFlorSHold(fresh.serial, c1, fresh.btncode, 6000);
+
+  Serial.println("[enroll A] step2: OLD x3 (authorise)");
+  for (int k = 0; k < 3; ++k) {
+    const uint16_t co = niceCounterNext(NICE_AUTH_SERIAL, NICE_AUTH_SEED);
+    Serial.printf("  OLD press %d serial=0x%07X counter=%u\n", k + 1, (uint32_t)NICE_AUTH_SERIAL, co);
+    txNiceFlorS(NICE_AUTH_SERIAL, co, fresh.btncode, 1);
+    delay(600);
+  }
+
+  Serial.println("[enroll A] step3: NEW once (confirm)");
+  const uint16_t c3 = niceCounterNext(fresh.serial, fresh.seed_counter);
+  txNiceFlorS(fresh.serial, c3, fresh.btncode, 1);
+
+  Serial.println("[enroll A] sent. Watch the receiver LED for 3 slow flashes = learned.");
+}
+
+// METHOD B: ESP32 sends NEW; operator presses the physical fob 3x for step 2.
+void niceEnrollFob(const NiceRemote& fresh) {
+  Serial.printf("[enroll B] NEW serial=0x%07X btn=0x%X\n", fresh.serial, fresh.btncode);
+
+  Serial.println("[enroll B] step1: hold NEW ~6s");
+  const uint16_t c1 = niceCounterNext(fresh.serial, fresh.seed_counter);
+  txNiceFlorSHold(fresh.serial, c1, fresh.btncode, 6000);
+
+  Serial.println("[enroll B] Now press your OLD fob 3x, then send any key to confirm...");
+  while (Serial.read() < 0) { delay(10); }
+
+  Serial.println("[enroll B] step3: NEW once (confirm)");
+  const uint16_t c3 = niceCounterNext(fresh.serial, fresh.seed_counter);
+  txNiceFlorS(fresh.serial, c3, fresh.btncode, 1);
+
+  Serial.println("[enroll B] sent. Watch the receiver LED for 3 slow flashes = learned.");
+}
