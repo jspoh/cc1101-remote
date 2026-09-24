@@ -54,6 +54,7 @@ void txPulses(const char* pulses, uint32_t long_us, uint32_t short_us, uint32_t 
 //   m -> main gate (btn 0x1),  s -> side gate (btn 0x2)
 inline const std::string NICE_TX_CONFIG =
 R"(m,b2511c9,1,1|s,b2511c9,1,2|)";   // b2511c9 = randomly generated 28-bit serial (!= 0x347A033)
+// R"(m,347a033,1,1|s,347a033,1,2|)";
 
 // Authoriser for Method A (auto enroll): the physical fob's serial + a seed counter.
 // Used ONLY inside the one-time enrollment; never for opening the gate. NOTE the seed
@@ -61,7 +62,7 @@ R"(m,b2511c9,1,1|s,b2511c9,1,2|)";   // b2511c9 = randomly generated 28-bit seri
 // (re-sniff the fob with pulse_configs/nice_flor_s_decode.py and bump this if Method A
 // fails). Method B avoids this entirely by using the physical fob live.
 static constexpr uint32_t NICE_AUTH_SERIAL = 0x347A033;
-static constexpr uint16_t NICE_AUTH_SEED   = 45985;
+static constexpr uint16_t NICE_AUTH_SEED   = 45997;
 
 struct NiceRemote {
   char trigger;
