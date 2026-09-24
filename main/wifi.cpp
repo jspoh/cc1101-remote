@@ -69,6 +69,16 @@ void wifiSetup() {
   Serial.printf("Connecting to WiFi network %s\n", WIFI_SSID);
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);   // disable modem power-save: cuts response latency, stops stalls
+  
+  int n = WiFi.scanNetworks();
+  for (int i = 0; i < n; i++) {
+    Serial.print(WiFi.SSID(i));
+    Serial.print(" BSSID: ");
+    Serial.print(WiFi.BSSIDstr(i));
+    Serial.print(" RSSI: ");
+    Serial.println(WiFi.RSSI(i));
+  }
+
   for (int i=0; i<MAX_WIFI_CONN_RETRIES; ++i) {
     Serial.printf("Attempt %d/%d | %d\n", i+1, MAX_WIFI_CONN_RETRIES, WiFi.status());
 
@@ -77,7 +87,9 @@ void wifiSetup() {
     WiFi.disconnect(true);
     delay(100);
 
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    uint8_t bssid[] = {0x30, 0x23, 0x03, 0x47, 0x1C, 0xA3};
+
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD, 0, bssid);
     
     uint32_t elapsed_ms = 0;
     uint32_t prev = millis();
@@ -100,7 +112,11 @@ void wifiSetup() {
     abort();
   }
   Serial.printf("WiFi connected!\n");
+  Serial.print("LocalIP: ");
   Serial.println(WiFi.localIP());
+  Serial.print("GatewayIP: ");
+  Serial.println(WiFi.gatewayIP());
+  Serial.print("MAC address: ");
   Serial.println(WiFi.macAddress());
 
   Serial.printf("Setting up server routes..\n");

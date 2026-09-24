@@ -25,7 +25,7 @@
 #define SERVER_PORT 2926
 #define WEBUI_PORT 80
 
-#define DISABLE_WIFI
+// #define DISABLE_WIFI
 
 
 extern WebServer server;

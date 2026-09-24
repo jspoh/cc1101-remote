@@ -13,7 +13,7 @@
 #define __GLOBAL_H__
 
 
-// #define TX_ONLY
+#define TX_ONLY
 
 
 #define CC1101_GDO0 0
